@@ -1,0 +1,5 @@
+services:
+  gearmand:
+    image: artefactual/gearmand:2.2.0-r1-alpine
+    ports:
+      - "4730:4730"

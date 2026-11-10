@@ -1,0 +1,53 @@
+[package]
+name = "gearman-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "A complete, ergonomic Gearman client and worker implementation in Rust"
+readme = "README.md"
+repository = "https://github.com/ArtemIsmagilov/gearman-rs"
+license = "MIT"
+keywords = ["gearman", "job-queue", "worker", "client", "queue"]
+categories = ["network-programming", "asynchronous"]
+
+[dependencies]
+thiserror = "2"
+
+tokio = { version = "1", features = [
+  "net",
+  "io-util",
+  "time",
+  "sync",
+], optional = true }
+
+[features]
+default = []
+# Enables the asynchronous client, worker and admin API.
+tokio = ["dep:tokio"]
+# Alias for the `tokio` feature.
+async = ["tokio"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[[example]]
+name = "sync_client"
+path = "examples/sync_client.rs"
+
+[[example]]
+name = "sync_worker"
+path = "examples/sync_worker.rs"
+
+[[example]]
+name = "admin"
+path = "examples/admin.rs"
+
+[[example]]
+name = "async_client"
+path = "examples/async_client.rs"
+required-features = ["tokio"]
+
+[[example]]
+name = "async_worker"
+path = "examples/async_worker.rs"
+required-features = ["tokio"]
