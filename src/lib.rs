@@ -81,7 +81,6 @@ pub use asynchronous::{
 /// This module is an implementation detail and may change at any time.
 #[doc(hidden)]
 pub mod _test_support {
-    use std::process;
     use std::sync::mpsc;
     use std::thread;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -94,7 +93,8 @@ pub mod _test_support {
             .duration_since(UNIX_EPOCH)
             .expect("system clock is before the Unix epoch")
             .as_nanos();
-        format!("gearman_rs_doc_{prefix}_{}_{nanos}", process::id())
+        let prefix = &prefix[..prefix.len().min(32)];
+        format!("grs_{prefix}_{:?}_{nanos:x}", thread::current().id())
     }
 
     /// Returns a Unix timestamp a number of seconds in the future.
@@ -144,5 +144,50 @@ pub mod _test_support {
     /// Cancels a background job during a documentation test.
     pub fn cancel(address: &str, handle: &JobHandle) -> Result<(), Error> {
         AdminClient::connect(address)?.cancel_job(handle.as_str())
+    }
+
+    /// Runs `handler` with a connected, registered asynchronous worker.
+    #[cfg(feature = "tokio")]
+    pub fn spawn_async_worker<F, Fut>(
+        function: String,
+        handler: F,
+    ) -> (
+        tokio::sync::oneshot::Receiver<()>,
+        tokio::task::JoinHandle<Result<(), Error>>,
+    )
+    where
+        F: FnOnce(crate::AsyncWorker) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<(), Error>> + Send,
+    {
+        let (ready_tx, ready_rx) = tokio::sync::oneshot::channel();
+        let join = tokio::spawn(async move {
+            let mut worker = crate::AsyncWorker::builder()
+                .read_timeout(Duration::from_secs(10))
+                .connect("127.0.0.1:4730")
+                .await?;
+            worker.register(&function).await?;
+            let _ = ready_tx.send(());
+            handler(worker).await
+        });
+        (ready_rx, join)
+    }
+
+    /// Runs exactly one job with an asynchronous worker.
+    #[cfg(feature = "tokio")]
+    pub fn spawn_async_worker_once<F, Fut>(
+        function: String,
+        handler: F,
+    ) -> (
+        tokio::sync::oneshot::Receiver<()>,
+        tokio::task::JoinHandle<Result<(), Error>>,
+    )
+    where
+        F: FnOnce(crate::AsyncWorkerJob) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = Result<(), Error>> + Send,
+    {
+        spawn_async_worker(function, move |mut worker| async move {
+            let job = worker.next_job().await?;
+            handler(job).await
+        })
     }
 }

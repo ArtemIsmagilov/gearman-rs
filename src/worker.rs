@@ -135,9 +135,9 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
-    /// let function = gearman_rs::_test_support::unique("register");
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("register");
     /// worker.register(&function)?;
     /// assert!(worker.abilities().any(|name| name == function.as_str()));
     /// # Ok(())
@@ -163,9 +163,9 @@ impl Worker {
     /// use std::time::Duration;
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
-    /// let function = gearman_rs::_test_support::unique("register_with_timeout");
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("register_with_timeout");
     /// worker.register_with_timeout(&function, Duration::from_secs(30))?;
     /// assert!(worker.abilities().any(|name| name == function.as_str()));
     /// # Ok(())
@@ -197,9 +197,9 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
-    /// let function = gearman_rs::_test_support::unique("unregister");
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("unregister");
     /// worker.register(&function)?;
     /// worker.unregister(&function)?;
     /// assert!(!worker.abilities().any(|name| name == function.as_str()));
@@ -222,10 +222,13 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
-    /// worker.register(gearman_rs::_test_support::unique("reset_abilities_a"))?;
-    /// worker.register(gearman_rs::_test_support::unique("reset_abilities_b"))?;
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// let first = "reverse";
+    /// let second = "transcode";
+    /// # let first = gearman_rs::_test_support::unique("reset_abilities_a");
+    /// # let second = gearman_rs::_test_support::unique("reset_abilities_b");
+    /// worker.register(&first)?;
+    /// worker.register(&second)?;
     /// worker.reset_abilities()?;
     /// assert!(worker.abilities().next().is_none());
     /// # Ok(())
@@ -244,8 +247,7 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
     /// worker.set_client_id("doc-worker")?;
     /// assert_eq!(worker.client_id(), Some("doc-worker"));
     /// # Ok(())
@@ -272,8 +274,7 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
     /// worker.all_yours()?;
     /// # Ok(())
     /// # }
@@ -301,30 +302,30 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("grab_job");
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("grab_job");
     /// let worker_function = function.clone();
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     move |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         assert_eq!(job.function, worker_function);
-    ///         worker.send_work_complete(&job.handle, job.workload().to_vec())
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     move |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         assert_eq!(job.function, worker_function);
+    /// #         worker.send_work_complete(&job.handle, job.workload().to_vec())
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let result = client.execute(function, b"hello")?;
     /// assert_eq!(result.data, b"hello");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -340,31 +341,32 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("grab_job_unique");
-    /// let unique = gearman_rs::_test_support::unique("grab_job_unique_id");
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("grab_job_unique");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("grab_job_unique_id");
     /// let worker_unique = unique.clone();
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     move |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job_unique()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         assert_eq!(job.unique.as_deref(), Some(worker_unique.as_str()));
-    ///         worker.send_work_complete(&job.handle, b"unique")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     move |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job_unique()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         assert_eq!(job.unique.as_deref(), Some(worker_unique.as_str()));
+    /// #         worker.send_work_complete(&job.handle, b"unique")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_unique(function, unique, b"hello")?;
     /// assert_eq!(client.wait(&handle)?.data, b"unique");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -380,30 +382,31 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("grab_job_all");
-    /// let unique = gearman_rs::_test_support::unique("grab_job_all_id");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job_all()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         assert_eq!(job.reducer.as_deref(), Some("sum"));
-    ///         worker.send_work_complete(&job.handle, b"reduced")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reduce-sum";
+    /// # let function = gearman_rs::_test_support::unique("grab_job_all");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("grab_job_all_id");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job_all()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         assert_eq!(job.reducer.as_deref(), Some("sum"));
+    /// #         worker.send_work_complete(&job.handle, b"reduced")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_reduce_job(function, unique, "sum", b"parts")?;
     /// assert_eq!(client.wait(&handle)?.data, b"reduced");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -419,23 +422,23 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("pre_sleep");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         worker.pre_sleep()?;
-    ///         let job = worker.grab_job()?.expect("job after NOOP");
-    ///         worker.send_work_complete(&job.handle, b"awake")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("pre_sleep");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         worker.pre_sleep()?;
+    /// #         let job = worker.grab_job()?.expect("job after NOOP");
+    /// #         worker.send_work_complete(&job.handle, b"awake")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// assert_eq!(client.execute(function, b"hello")?.data, b"awake");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -460,8 +463,7 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
     /// assert_eq!(worker.echo(b"ping")?, b"ping");
     /// # Ok(())
     /// # }
@@ -486,8 +488,7 @@ impl Worker {
     /// ```
     /// use gearman_rs::Worker;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut worker = Worker::connect(&address)?;
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
     /// worker.option("exceptions")?;
     /// # Ok(())
     /// # }
@@ -515,31 +516,31 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("send_work_data");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         worker.send_work_data(&job.handle, b"chunk")?;
-    ///         worker.send_work_complete(&job.handle, b"done")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_data");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         worker.send_work_data(&job.handle, b"chunk")?;
+    /// #         worker.send_work_complete(&job.handle, b"done")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// let result = client.wait(&handle)?;
     /// assert_eq!(result.streamed_data, vec![b"chunk".to_vec()]);
     /// assert_eq!(result.data, b"done");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -555,30 +556,30 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("send_work_warning");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         worker.send_work_warning(&job.handle, b"careful")?;
-    ///         worker.send_work_complete(&job.handle, b"done")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_warning");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         worker.send_work_warning(&job.handle, b"careful")?;
+    /// #         worker.send_work_complete(&job.handle, b"done")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// let result = client.wait(&handle)?;
     /// assert_eq!(result.warnings, vec![b"careful".to_vec()]);
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -594,25 +595,26 @@ impl Worker {
     /// use gearman_rs::{Client, Error, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("send_work_exception");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         worker.send_work_exception(&job.handle, b"boom")?;
-    ///         worker.send_work_fail(&job.handle)
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_exception");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         worker.send_work_exception(&job.handle, b"boom")?;
+    /// #         worker.send_work_fail(&job.handle)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
+    /// client.option("exceptions")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// match client.wait(&handle) {
     ///     Err(Error::JobFailed(failure)) => {
@@ -621,7 +623,7 @@ impl Worker {
     ///     other => panic!("expected a job failure, got {other:?}"),
     /// }
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -641,31 +643,31 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("send_work_status");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         worker.send_work_status(&job.handle, 1, 2)?;
-    ///         worker.send_work_complete(&job.handle, b"done")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("send_work_status");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         worker.send_work_status(&job.handle, 1, 2)?;
+    /// #         worker.send_work_complete(&job.handle, b"done")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// let result = client.wait(&handle)?;
     /// let status = result.status.expect("progress status");
     /// assert_eq!((status.numerator, status.denominator), (1, 2));
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -692,28 +694,28 @@ impl Worker {
     /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("send_work_complete");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         worker.send_work_complete(&job.handle, b"done")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_complete");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         worker.send_work_complete(&job.handle, b"done")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// assert_eq!(client.wait(&handle)?.data, b"done");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -729,28 +731,28 @@ impl Worker {
     /// use gearman_rs::{Client, Error, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("send_work_fail");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         worker.send_work_fail(&job.handle)
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_fail");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         worker.send_work_fail(&job.handle)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// assert!(matches!(client.wait(&handle), Err(Error::JobFailed(_))));
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -768,29 +770,33 @@ impl Worker {
     /// # Examples
     ///
     /// ```
-    /// use gearman_rs::{Client, Error, Worker};
+    /// use gearman_rs::{Client, Worker};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("run");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         worker.run(|job| {
-    ///             job.complete(job.workload().to_vec())?;
-    ///             // Stop the otherwise infinite loop after this job.
-    ///             job.worker_mut().shutdown()
-    ///         })
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("run");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || {
+    /// #     std::thread::sleep(Duration::from_millis(200));
+    /// #     let result = Client::connect("127.0.0.1:4730")
+    /// #         .unwrap()
+    /// #         .execute(client_function, b"hello")
+    /// #         .unwrap();
+    /// #     assert_eq!(result.data, b"hello");
+    /// # });
     ///
-    /// let mut client = Client::connect(&address)?;
-    /// assert_eq!(client.execute(function, b"hello")?.data, b"hello");
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(function)?;
+    /// # worker.set_read_timeout(Some(Duration::from_secs(10)))?;
     ///
-    /// let error = worker.join().unwrap().unwrap_err();
-    /// assert!(matches!(error, Error::Io(_) | Error::ConnectionClosed));
+    /// // `run` loops forever, so stop it after the first job.
+    /// let result = worker.run(|job| {
+    ///     job.complete(job.workload().to_vec())?;
+    ///     job.worker_mut().shutdown()
+    /// });
+    /// // Closing the socket makes the loop return an I/O error.
+    /// assert!(result.is_err());
+    /// # client.join().unwrap();
     /// # Ok(())
     /// # }
     /// ```
@@ -804,6 +810,28 @@ impl Worker {
     }
 
     /// Waits for, then processes exactly one job.
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::time::Duration;
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("run_once");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         worker.run_once(|job| job.complete(job.workload().to_vec()))
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
+    /// assert_eq!(client.execute(function, b"hello")?.data, b"hello");
+    /// # worker.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn run_once<F>(&mut self, mut handler: F) -> Result<()>
     where
         F: FnMut(&mut WorkerJob<'_>) -> Result<()>,
@@ -829,6 +857,19 @@ impl Worker {
     }
 
     /// Sends a low-level packet.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{PacketType, Worker};
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.send_packet(PacketType::EchoReq, b"ping")?;
+    /// let packet = worker.receive_packet()?;
+    /// assert_eq!(packet.kind, PacketType::EchoRes);
+    /// assert_eq!(packet.data, b"ping");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn send_packet(&mut self, kind: PacketType, data: &[u8]) -> Result<()> {
         self.connection.send(kind, data)
     }
@@ -968,18 +1009,93 @@ impl<'a> WorkerJob<'a> {
     }
 
     /// Sends intermediate data to the client.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_data");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     client.wait(&handle)?;
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.send_data(b"chunk")?;
+    ///     job.complete(b"done")
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn send_data(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.worker.send_work_data(&self.job.handle, data)
     }
 
     /// Sends a warning to the client.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_warning");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     client.wait(&handle)?;
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.send_warning(b"careful")?;
+    ///     job.complete(b"done")
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn send_warning(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.worker.send_work_warning(&self.job.handle, data)
     }
 
     /// Sends progress information for the job.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_status");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     client.wait(&handle)?;
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.send_status(1, 2)?;
+    ///     job.complete(b"done")
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn send_status(&mut self, numerator: u32, denominator: u32) -> Result<()> {
         self.ensure_active()?;
         self.worker
@@ -989,6 +1105,32 @@ impl<'a> WorkerJob<'a> {
     /// Sends a job exception without finishing the job.
     ///
     /// Send `WORK_FAIL` afterwards, or use [`WorkerJob::fail_with_exception`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_exception");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     client.option("exceptions")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     assert!(matches!(client.wait(&handle), Err(gearman_rs::Error::JobFailed(_))));
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.send_exception(b"boom")?;
+    ///     job.fail()
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn send_exception(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.worker
@@ -996,6 +1138,30 @@ impl<'a> WorkerJob<'a> {
     }
 
     /// Completes the job with a result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_complete");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     client.wait(&handle)?;
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.complete(job.workload().to_vec())
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn complete(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.worker
@@ -1005,6 +1171,30 @@ impl<'a> WorkerJob<'a> {
     }
 
     /// Marks the job as failed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_fail");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     assert!(matches!(client.wait(&handle), Err(gearman_rs::Error::JobFailed(_))));
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.fail()
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn fail(&mut self) -> Result<()> {
         self.ensure_active()?;
         self.worker.send_work_fail(&self.job.handle)?;
@@ -1013,6 +1203,31 @@ impl<'a> WorkerJob<'a> {
     }
 
     /// Sends an exception and then marks the job as failed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{Client, Worker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_fail_with_exception");
+    /// # let client_function = function.clone();
+    /// # let client = std::thread::spawn(move || -> gearman_rs::Result<()> {
+    /// #     let mut client = Client::connect("127.0.0.1:4730")?;
+    /// #     client.option("exceptions")?;
+    /// #     let handle = client.submit_job(client_function, b"hello")?;
+    /// #     assert!(matches!(client.wait(&handle), Err(gearman_rs::Error::JobFailed(_))));
+    /// #     Ok(())
+    /// # });
+    /// let mut worker = Worker::connect("127.0.0.1:4730")?;
+    /// worker.register(&function)?;
+    /// worker.run_once(|job| {
+    ///     job.fail_with_exception(b"boom")
+    /// })?;
+    /// # client.join().unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn fail_with_exception(&mut self, exception: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.worker

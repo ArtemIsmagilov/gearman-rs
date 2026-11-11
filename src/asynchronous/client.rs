@@ -101,6 +101,32 @@ impl Client {
     }
 
     /// Submits a job request and returns its handle.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, JobRequest};
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let request = JobRequest::new(function.clone(), b"hello").unique("request-1");
+    /// let handle = client.submit(&request).await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit(&mut self, request: &JobRequest) -> Result<JobHandle> {
         request.validate()?;
 
@@ -116,6 +142,31 @@ impl Client {
     }
 
     /// Submits a foreground job and waits for its result.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, JobRequest};
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_and_wait");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let request = JobRequest::new(function, b"hello");
+    /// let result = client.submit_and_wait(&request).await?;
+    /// assert_eq!(result.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_and_wait(&mut self, request: &JobRequest) -> Result<JobResult> {
         if !request.expects_result() {
             return Err(Error::InvalidArgument(
@@ -127,6 +178,31 @@ impl Client {
     }
 
     /// Submits a normal-priority foreground job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_job");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job(
         &mut self,
         function: impl AsRef<str>,
@@ -137,6 +213,33 @@ impl Client {
     }
 
     /// Submits a normal-priority foreground job with a unique id.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let function = "reverse";
+    /// let unique = "request-1";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_unique");
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_unique_id");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_unique(function, unique, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_unique(
         &mut self,
         function: impl AsRef<str>,
@@ -148,6 +251,22 @@ impl Client {
     }
 
     /// Submits a normal-priority background job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_bg");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg(function, b"payload").await?;
+    /// assert!(!handle.as_str().is_empty());
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_bg(
         &mut self,
         function: impl AsRef<str>,
@@ -158,6 +277,25 @@ impl Client {
     }
 
     /// Submits a normal-priority background job with a unique id.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// let unique = "job-1";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_bg_unique");
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_bg_unique_id");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg_unique(function, unique.clone(), b"payload").await?;
+    /// let status = client.job_status_unique(&unique).await?;
+    /// assert!(status.known);
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_bg_unique(
         &mut self,
         function: impl AsRef<str>,
@@ -173,6 +311,30 @@ impl Client {
     }
 
     /// Submits a high-priority foreground job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_high");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_high(function, b"hello").await?;
+    /// assert_eq!(client.wait(&handle).await?.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_high(
         &mut self,
         function: impl AsRef<str>,
@@ -183,6 +345,22 @@ impl Client {
     }
 
     /// Submits a high-priority background job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_high_bg");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg(function, b"payload").await?;
+    /// assert!(!handle.as_str().is_empty());
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_high_bg(
         &mut self,
         function: impl AsRef<str>,
@@ -197,6 +375,30 @@ impl Client {
     }
 
     /// Submits a low-priority foreground job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_low");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_low(function, b"hello").await?;
+    /// assert_eq!(client.wait(&handle).await?.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_low(
         &mut self,
         function: impl AsRef<str>,
@@ -207,6 +409,22 @@ impl Client {
     }
 
     /// Submits a low-priority background job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_low_bg");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg(function, b"payload").await?;
+    /// assert!(!handle.as_str().is_empty());
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_low_bg(
         &mut self,
         function: impl AsRef<str>,
@@ -221,6 +439,20 @@ impl Client {
     }
 
     /// Submits a scheduled background job.
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, Schedule};
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client
+    ///     .submit_job_sched("cleanup", "nightly", Schedule::every(), b"payload")
+    ///     .await?;
+    /// assert!(!handle.as_str().is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_sched(
         &mut self,
         function: impl AsRef<str>,
@@ -237,6 +469,26 @@ impl Client {
     }
 
     /// Submits a background job to run at a Unix epoch.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "reminder";
+    /// let unique = "reminder-1";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_epoch");
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_epoch_id");
+    /// let epoch = 1_900_000_000;
+    /// # let epoch = gearman_rs::_test_support::epoch_in(3_600);
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_epoch(function, unique, epoch, b"payload").await?;
+    /// assert!(!handle.as_str().is_empty());
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_job_epoch(
         &mut self,
         function: impl AsRef<str>,
@@ -253,6 +505,37 @@ impl Client {
     }
 
     /// Submits a foreground reduce job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "reduce-sum";
+    /// let unique = "reduce-1";
+    /// # let function = gearman_rs::_test_support::unique("submit_reduce_job");
+    /// # let unique = gearman_rs::_test_support::unique("submit_reduce_job_id");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job_all().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         assert_eq!(job.reducer.as_deref(), Some("sum"));
+    /// #         worker.send_work_complete(&job.handle, b"reduced").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_reduce_job(function, unique, "sum", b"parts").await?;
+    /// assert_eq!(client.wait(&handle).await?.data, b"reduced");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_reduce_job(
         &mut self,
         function: impl AsRef<str>,
@@ -269,6 +552,26 @@ impl Client {
     }
 
     /// Submits a background reduce job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "reduce-sum";
+    /// let unique = "reduce-1";
+    /// # let function = gearman_rs::_test_support::unique("submit_reduce_job_bg");
+    /// # let unique = gearman_rs::_test_support::unique("submit_reduce_job_bg_id");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client
+    ///     .submit_reduce_job_bg(function, unique, "sum", b"parts")
+    ///     .await?;
+    /// assert!(client.job_status(&handle).await?.known);
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn submit_reduce_job_bg(
         &mut self,
         function: impl AsRef<str>,
@@ -286,6 +589,30 @@ impl Client {
     }
 
     /// Submits a foreground job and waits for the result.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("execute");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let result = client.execute(function, b"hello").await?;
+    /// assert_eq!(result.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn execute(
         &mut self,
         function: impl AsRef<str>,
@@ -296,6 +623,31 @@ impl Client {
     }
 
     /// Waits for the result of a foreground job.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("wait");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker_once(
+    /// #     function.clone(),
+    /// #     |mut job| async move {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.data, b"olleh");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn wait(&mut self, handle: &JobHandle) -> Result<JobResult> {
         if !self.pending.contains_key(handle.as_str()) {
             return Err(Error::UnknownJob {
@@ -346,6 +698,24 @@ impl Client {
     }
 
     /// Queries the status of a job by handle.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("job_status");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg(function, b"payload").await?;
+    /// let status = client.job_status(&handle).await?;
+    /// assert!(status.known);
+    /// assert!(!status.running);
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn job_status(&mut self, handle: &JobHandle) -> Result<JobStatus> {
         self.connection
             .send(PacketType::GetStatus, handle.as_str().as_bytes())
@@ -368,6 +738,25 @@ impl Client {
     }
 
     /// Queries the status of a job by unique id.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// let unique = "job-1";
+    /// # let function = gearman_rs::_test_support::unique("job_status_unique");
+    /// # let unique = gearman_rs::_test_support::unique("job_status_unique_id");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg_unique(function, unique.clone(), b"payload").await?;
+    /// let status = client.job_status_unique(&unique).await?;
+    /// assert!(status.known);
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn job_status_unique(&mut self, unique: &str) -> Result<JobStatus> {
         ensure_no_nul(unique, "unique id")?;
         self.connection
@@ -391,6 +780,17 @@ impl Client {
     }
 
     /// Requests a connection option such as `"exceptions"`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// client.option("exceptions").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn option(&mut self, option: &str) -> Result<()> {
         ensure_no_nul(option, "option name")?;
         self.connection
@@ -414,6 +814,17 @@ impl Client {
     }
 
     /// Returns whether the server accepts a connection option.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// assert!(client.supports_option("exceptions").await?);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn supports_option(&mut self, option: &str) -> Result<bool> {
         match self.option(option).await {
             Ok(()) => Ok(true),
@@ -423,6 +834,17 @@ impl Client {
     }
 
     /// Sends an `ECHO_REQ` and returns the echoed bytes.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// assert_eq!(client.echo(b"ping").await?, b"ping");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn echo(&mut self, data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
         self.connection
             .send(PacketType::EchoReq, data.as_ref())
@@ -445,6 +867,20 @@ impl Client {
     }
 
     /// Sends a low-level packet.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, PacketType};
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// client.send_packet(PacketType::EchoReq, b"ping").await?;
+    /// let packet = client.receive_packet().await?;
+    /// assert_eq!(packet.kind, PacketType::EchoRes);
+    /// assert_eq!(packet.data, b"ping");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_packet(&mut self, kind: PacketType, data: &[u8]) -> Result<()> {
         self.connection.send(kind, data).await
     }
@@ -480,6 +916,17 @@ impl Client {
     }
 
     /// Shuts down the TCP connection.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncClient;
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// client.shutdown().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn shutdown(&mut self) -> Result<()> {
         self.connection.stream_mut().shutdown().await?;
         Ok(())
@@ -535,6 +982,9 @@ impl Client {
                 let handle = field_to_string_trim(fields[0]);
                 if let Some(pending) = self.pending.get_mut(&handle) {
                     pending.exception = Some(fields[1].to_vec());
+                    // With the "exceptions" option enabled the server sends
+                    // WORK_EXCEPTION instead of WORK_FAIL.
+                    pending.failed = true;
                 }
                 Ok(true)
             }

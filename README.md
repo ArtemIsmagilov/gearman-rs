@@ -266,13 +266,15 @@ TLS is not implemented; terminate TLS in a proxy if needed.
 Unit and mock-server tests run without a Gearman server:
 
 ```bash
-cargo test --features tokio
+cargo test --features tokio --lib --test mock_server
 ```
 
-Integration tests against a real `gearmand` run when `GEARMAN_ADDR` is set:
+Documentation tests and integration tests use a real `gearmand` at
+`127.0.0.1:4730`:
 
 ```bash
-GEARMAN_ADDR=127.0.0.1:4730 cargo test --features tokio --test real_server
+docker compose up -d
+cargo test --features tokio --doc --test real_server
 ```
 
 ## License

@@ -134,6 +134,17 @@ impl AdminClient {
     ///
     /// Single-value commands (`version`, `maxqueue`, ...) and list commands
     /// (`status`, `workers`, ...) are both handled.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// let lines = admin.command("version")?;
+    /// assert!(lines[0].starts_with("OK"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn command(&mut self, command: &str) -> Result<Vec<String>> {
         self.send(command)?;
         let mode = if is_list_command(command) {
@@ -145,6 +156,18 @@ impl AdminClient {
     }
 
     /// Runs `status` and returns queue statistics per function.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// for row in admin.status()? {
+    ///     println!("{}: queued={} running={} workers={}", row.function, row.total, row.running, row.workers);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn status(&mut self) -> Result<Vec<FunctionStatus>> {
         let lines = self.list_command("status")?;
         let mut result = Vec::with_capacity(lines.len());
@@ -164,6 +187,18 @@ impl AdminClient {
     }
 
     /// Runs `prioritystatus` and returns queue statistics per priority.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// for row in admin.priority_status()? {
+    ///     println!("{}: high={} normal={} low={} workers={}", row.function, row.high, row.normal, row.low, row.workers);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn priority_status(&mut self) -> Result<Vec<PriorityStatus>> {
         let lines = self.list_command("prioritystatus")?;
         let mut result = Vec::with_capacity(lines.len());
@@ -186,6 +221,18 @@ impl AdminClient {
     }
 
     /// Runs `workers` and returns connected workers.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// for worker in admin.workers()? {
+    ///     println!("{} {} {:?}", worker.ip, worker.client_id, worker.functions);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn workers(&mut self) -> Result<Vec<WorkerInfo>> {
         let lines = self.list_command("workers")?;
         let mut result = Vec::with_capacity(lines.len());
@@ -216,12 +263,32 @@ impl AdminClient {
     }
 
     /// Runs `version` and returns the server version.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// assert!(!admin.version()?.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn version(&mut self) -> Result<String> {
         let line = self.single_line("version")?;
         Ok(line.strip_prefix("OK ").unwrap_or(&line).to_owned())
     }
 
     /// Runs `getpid` and returns the server process id.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// assert!(admin.get_pid()? > 0);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn get_pid(&mut self) -> Result<u32> {
         let line = self.single_line("getpid")?;
         let value = line.strip_prefix("OK ").unwrap_or(&line);
@@ -231,18 +298,52 @@ impl AdminClient {
     }
 
     /// Runs `verbose` and returns the current verbosity name.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// assert!(!admin.verbose()?.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn verbose(&mut self) -> Result<String> {
         let line = self.single_line("verbose")?;
         Ok(line.strip_prefix("OK ").unwrap_or(&line).to_owned())
     }
 
     /// Sets one maximum queue size for a function.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let function = "thumbnail";
+    /// # let function = gearman_rs::_test_support::unique("max_queue");
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// admin.max_queue(&function, 100)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn max_queue(&mut self, function: &str, size: u32) -> Result<()> {
         self.single_line(&format!("maxqueue {function} {size}"))?;
         Ok(())
     }
 
     /// Sets separate maximum queue sizes for high, normal and low priority.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let function = "thumbnail";
+    /// # let function = gearman_rs::_test_support::unique("max_queue_priority");
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// admin.max_queue_priority(&function, 10, 50, 100)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn max_queue_priority(
         &mut self,
         function: &str,
@@ -255,12 +356,42 @@ impl AdminClient {
     }
 
     /// Cancels a queued job by handle.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AdminClient, Client};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("cancel_job");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
+    /// let handle = client.submit_job_bg(function, b"payload")?;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// admin.cancel_job(handle.as_str())?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn cancel_job(&mut self, handle: &str) -> Result<()> {
         self.single_line(&format!("cancel job {handle}"))?;
         Ok(())
     }
 
     /// Runs `show jobs` and returns queued jobs.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AdminClient, Client};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("show_jobs");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
+    /// let handle = client.submit_job_bg(function, b"payload")?;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// let jobs = admin.show_jobs()?;
+    /// assert!(jobs.iter().any(|job| job.handle == handle.as_str()));
+    /// admin.cancel_job(handle.as_str())?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn show_jobs(&mut self) -> Result<Vec<JobInfo>> {
         let lines = self.list_command("show jobs")?;
         let mut result = Vec::with_capacity(lines.len());
@@ -280,6 +411,24 @@ impl AdminClient {
     }
 
     /// Runs `show unique jobs` and returns `(handle, unique)` pairs.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AdminClient, Client};
+    /// let function = "resize";
+    /// let unique = "job-1";
+    /// # let function = gearman_rs::_test_support::unique("show_unique_jobs");
+    /// # let unique = gearman_rs::_test_support::unique("show_unique_jobs_id");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
+    /// let handle = client.submit_job_bg_unique(function, unique, b"payload")?;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// let jobs = admin.show_unique_jobs()?;
+    /// assert!(jobs.iter().any(|(job, _)| job == handle.as_str()));
+    /// admin.cancel_job(handle.as_str())?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn show_unique_jobs(&mut self) -> Result<Vec<(String, String)>> {
         let lines = self.list_command("show unique jobs")?;
         let mut result = Vec::with_capacity(lines.len());
@@ -296,12 +445,34 @@ impl AdminClient {
     }
 
     /// Creates the named function on the server.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let function = "thumbnail";
+    /// # let function = gearman_rs::_test_support::unique("create_function");
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// admin.create_function(&function)?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn create_function(&mut self, function: &str) -> Result<()> {
         self.single_line(&format!("create function {function}"))?;
         Ok(())
     }
 
     /// Drops the named function from the server.
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// admin.drop_function("thumbnail")?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn drop_function(&mut self, function: &str) -> Result<()> {
         self.single_line(&format!("drop function {function}"))?;
         Ok(())
@@ -325,6 +496,16 @@ impl AdminClient {
     }
 
     /// Shuts down the TCP connection.
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AdminClient;
+    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
+    /// admin.shutdown()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn shutdown(&mut self) -> Result<()> {
         self.reader.get_ref().shutdown(Shutdown::Both)?;
         Ok(())

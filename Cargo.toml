@@ -18,6 +18,7 @@ tokio = { version = "1", features = [
   "io-util",
   "time",
   "sync",
+  "rt",
 ], optional = true }
 
 [features]

@@ -94,6 +94,20 @@ impl Worker {
     }
 
     /// Registers a function with `CAN_DO`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("register");
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// assert!(worker.abilities().any(|name| name == function.as_str()));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn register(&mut self, function: impl AsRef<str>) -> Result<()> {
         let function = function.as_ref();
         ensure_function(function)?;
@@ -106,6 +120,21 @@ impl Worker {
     }
 
     /// Registers a function with an execution timeout.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use std::time::Duration;
+    /// use gearman_rs::AsyncWorker;
+    /// let function = "transcode";
+    /// # let function = gearman_rs::_test_support::unique("register_with_timeout");
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register_with_timeout(&function, Duration::from_secs(30)).await?;
+    /// assert!(worker.abilities().any(|name| name == function.as_str()));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn register_with_timeout(
         &mut self,
         function: impl AsRef<str>,
@@ -126,6 +155,21 @@ impl Worker {
     }
 
     /// Unregisters a function with `CANT_DO`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("unregister");
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// worker.unregister(&function).await?;
+    /// assert!(!worker.abilities().any(|name| name == function.as_str()));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn unregister(&mut self, function: impl AsRef<str>) -> Result<()> {
         let function = function.as_ref();
         ensure_function(function)?;
@@ -135,6 +179,22 @@ impl Worker {
     }
 
     /// Removes every registered function.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// # let first = gearman_rs::_test_support::unique("reset_abilities_a");
+    /// # let second = gearman_rs::_test_support::unique("reset_abilities_b");
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&first).await?;
+    /// worker.register(&second).await?;
+    /// worker.reset_abilities().await?;
+    /// assert!(worker.abilities().next().is_none());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn reset_abilities(&mut self) -> Result<()> {
         self.send(PacketType::ResetAbilities, &[]).await?;
         self.abilities.clear();
@@ -142,6 +202,18 @@ impl Worker {
     }
 
     /// Sets the worker's client id.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.set_client_id("doc-worker").await?;
+    /// assert_eq!(worker.client_id(), Some("doc-worker"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn set_client_id(&mut self, client_id: impl AsRef<str>) -> Result<()> {
         let client_id = client_id.as_ref();
         ensure_no_nul(client_id, "client id")?;
@@ -157,6 +229,17 @@ impl Worker {
     }
 
     /// Sends `ALL_YOURS`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.all_yours().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn all_yours(&mut self) -> Result<()> {
         self.send(PacketType::AllYours, &[]).await
     }
@@ -172,21 +255,137 @@ impl Worker {
     }
 
     /// Sends `GRAB_JOB` and returns the next assignment or `None`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("grab_job");
+    /// # let worker_function = function.clone();
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         assert_eq!(job.function, worker_function);
+    /// #         worker.send_work_complete(&job.handle, job.workload().to_vec()).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let result = client.execute(function, b"hello").await?;
+    /// assert_eq!(result.data, b"hello");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn grab_job(&self) -> Result<Option<Job>> {
         self.grab(PacketType::GrabJob).await
     }
 
     /// Sends `GRAB_JOB_UNIQ` and returns the next assignment or `None`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// let unique = "request-1";
+    /// # let function = gearman_rs::_test_support::unique("grab_job_unique");
+    /// # let unique = gearman_rs::_test_support::unique("grab_job_unique_id");
+    /// # let worker_unique = unique.clone();
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job_unique().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         assert_eq!(job.unique.as_deref(), Some(worker_unique.as_str()));
+    /// #         worker.send_work_complete(&job.handle, b"unique").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_unique(function, unique, b"hello").await?;
+    /// assert_eq!(client.wait(&handle).await?.data, b"unique");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn grab_job_unique(&self) -> Result<Option<Job>> {
         self.grab(PacketType::GrabJobUniq).await
     }
 
     /// Sends `GRAB_JOB_ALL` and returns the next assignment or `None`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "reduce-sum";
+    /// let unique = "reduce-1";
+    /// # let function = gearman_rs::_test_support::unique("grab_job_all");
+    /// # let unique = gearman_rs::_test_support::unique("grab_job_all_id");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job_all().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         assert_eq!(job.reducer.as_deref(), Some("sum"));
+    /// #         worker.send_work_complete(&job.handle, b"reduced").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_reduce_job(function, unique, "sum", b"parts").await?;
+    /// assert_eq!(client.wait(&handle).await?.data, b"reduced");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn grab_job_all(&self) -> Result<Option<Job>> {
         self.grab(PacketType::GrabJobAll).await
     }
 
     /// Sends `PRE_SLEEP` and waits for the server to wake the worker.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("pre_sleep");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         worker.pre_sleep().await?;
+    /// #         let job = worker.grab_job().await?.expect("job after NOOP");
+    /// #         worker.send_work_complete(&job.handle, b"awake").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// assert_eq!(client.execute(function, b"hello").await?.data, b"awake");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn pre_sleep(&self) -> Result<()> {
         let mut connection = self.connection.lock().await;
         connection.send(PacketType::PreSleep, &[]).await?;
@@ -203,6 +402,17 @@ impl Worker {
     }
 
     /// Sends an `ECHO_REQ` and returns the echoed bytes.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// assert_eq!(worker.echo(b"ping").await?, b"ping");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn echo(&self, data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
         let mut connection = self.connection.lock().await;
         connection.send(PacketType::EchoReq, data.as_ref()).await?;
@@ -218,6 +428,17 @@ impl Worker {
     }
 
     /// Requests a connection option.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.option("exceptions").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn option(&self, option: &str) -> Result<()> {
         ensure_no_nul(option, "option name")?;
         let mut connection = self.connection.lock().await;
@@ -236,12 +457,73 @@ impl Worker {
     }
 
     /// Sends intermediate job data.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_data");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         worker.send_work_data(&job.handle, b"chunk").await?;
+    /// #         worker.send_work_complete(&job.handle, b"done").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.streamed_data, vec![b"chunk".to_vec()]);
+    /// assert_eq!(result.data, b"done");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_work_data(&self, handle: &JobHandle, data: impl AsRef<[u8]>) -> Result<()> {
         self.send_handle_payload(PacketType::WorkData, handle, data.as_ref())
             .await
     }
 
     /// Sends a job warning.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_warning");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         worker.send_work_warning(&job.handle, b"careful").await?;
+    /// #         worker.send_work_complete(&job.handle, b"done").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.warnings, vec![b"careful".to_vec()]);
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_work_warning(
         &self,
         handle: &JobHandle,
@@ -252,6 +534,41 @@ impl Worker {
     }
 
     /// Sends a job exception.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker, Error};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_exception");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         worker.send_work_exception(&job.handle, b"boom").await?;
+    /// #         worker.send_work_fail(&job.handle).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// client.option("exceptions").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// match client.wait(&handle).await {
+    ///     Err(Error::JobFailed(failure)) => {
+    ///         assert_eq!(failure.exception.as_deref(), Some("boom"));
+    ///     }
+    ///     other => panic!("expected a job failure, got {other:?}"),
+    /// }
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_work_exception(
         &self,
         handle: &JobHandle,
@@ -262,6 +579,37 @@ impl Worker {
     }
 
     /// Sends progress information.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_status");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         worker.send_work_status(&job.handle, 1, 2).await?;
+    /// #         worker.send_work_complete(&job.handle, b"done").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// let status = result.status.expect("progress status");
+    /// assert_eq!((status.numerator, status.denominator), (1, 2));
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_work_status(
         &self,
         handle: &JobHandle,
@@ -278,6 +626,35 @@ impl Worker {
     }
 
     /// Completes a job with a result.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_complete");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         worker.send_work_complete(&job.handle, b"done").await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// let result = client.wait(&handle).await?;
+    /// assert_eq!(result.data, b"done");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_work_complete(
         &self,
         handle: &JobHandle,
@@ -288,12 +665,63 @@ impl Worker {
     }
 
     /// Marks a job as failed.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker, Error};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("send_work_fail");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |worker| async move {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job().await? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep().await?;
+    /// #         };
+    /// #         worker.send_work_fail(&job.handle).await
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job(function, b"hello").await?;
+    /// assert!(matches!(client.wait(&handle).await, Err(Error::JobFailed(_))));
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_work_fail(&self, handle: &JobHandle) -> Result<()> {
         self.send(PacketType::WorkFail, handle.as_str().as_bytes())
             .await
     }
 
     /// Waits for the next job, sleeping between attempts.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("next_job");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_async_worker(
+    /// #     function.clone(),
+    /// #     |mut worker| async move {
+    /// #         let mut job = worker.next_job().await?;
+    /// #         job.complete(job.workload().to_vec()).await;
+    /// #         Ok(())
+    /// #     },
+    /// # );
+    /// # ready.await.unwrap();
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// assert_eq!(client.execute(function, b"hello").await?.data, b"hello");
+    /// # worker.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn next_job(&mut self) -> Result<WorkerJob> {
         loop {
             if let Some(job) = self.grab_job().await? {
@@ -317,6 +745,29 @@ impl Worker {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("run");
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let task = tokio::spawn(async move {
+    ///     worker.run(async |job| {
+    ///         let mut data = job.workload().to_vec();
+    ///         data.reverse();
+    ///         job.complete(data).await
+    ///     }).await
+    /// });
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// assert_eq!(client.execute(function, b"hello").await?.data, b"olleh");
+    /// task.abort();
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn run<F>(&mut self, mut handler: F) -> Result<()>
     where
         F: AsyncFnMut(&mut WorkerJob) -> Result<()>,
@@ -337,6 +788,20 @@ impl Worker {
     }
 
     /// Sends a low-level packet.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncWorker, PacketType};
+    /// let worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.send_packet(PacketType::EchoReq, b"ping").await?;
+    /// let packet = worker.receive_packet().await?;
+    /// assert_eq!(packet.kind, PacketType::EchoRes);
+    /// assert_eq!(packet.data, b"ping");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_packet(&self, kind: PacketType, data: &[u8]) -> Result<()> {
         self.send(kind, data).await
     }
@@ -365,6 +830,17 @@ impl Worker {
     }
 
     /// Shuts down the TCP connection.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncWorker;
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.shutdown().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn shutdown(&mut self) -> Result<()> {
         self.connection.lock().await.stream_mut().shutdown().await?;
         Ok(())
@@ -465,6 +941,31 @@ impl WorkerJob {
     }
 
     /// Sends intermediate data to the client.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_data");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     client.wait(&handle).await?;
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.send_data(b"chunk").await?;
+    /// job.complete(b"done").await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_data(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.send_handle_payload(PacketType::WorkData, data.as_ref())
@@ -472,6 +973,31 @@ impl WorkerJob {
     }
 
     /// Sends a warning to the client.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_warning");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     client.wait(&handle).await?;
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.send_warning(b"careful").await?;
+    /// job.complete(b"done").await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_warning(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.send_handle_payload(PacketType::WorkWarning, data.as_ref())
@@ -479,6 +1005,31 @@ impl WorkerJob {
     }
 
     /// Sends progress information.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_status");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     client.wait(&handle).await?;
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.send_status(1, 2).await?;
+    /// job.complete(b"done").await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_status(&mut self, numerator: u32, denominator: u32) -> Result<()> {
         self.ensure_active()?;
         let mut payload = Vec::with_capacity(self.job.handle.as_str().len() + 24);
@@ -491,6 +1042,32 @@ impl WorkerJob {
     }
 
     /// Sends an exception without finishing the job.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_send_exception");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     client.option("exceptions").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     assert!(matches!(client.wait(&handle).await, Err(gearman_rs::Error::JobFailed(_))));
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.send_exception(b"boom").await?;
+    /// job.fail().await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_exception(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.send_handle_payload(PacketType::WorkException, data.as_ref())
@@ -498,6 +1075,30 @@ impl WorkerJob {
     }
 
     /// Completes the job with a result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_complete");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     client.wait(&handle).await?;
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.complete(job.workload().to_vec()).await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn complete(&mut self, data: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.send_handle_payload(PacketType::WorkComplete, data.as_ref())
@@ -507,6 +1108,30 @@ impl WorkerJob {
     }
 
     /// Marks the job as failed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_fail");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     assert!(matches!(client.wait(&handle).await, Err(gearman_rs::Error::JobFailed(_))));
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.fail().await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn fail(&mut self) -> Result<()> {
         self.ensure_active()?;
         self.send(PacketType::WorkFail, self.job.handle.as_str().as_bytes())
@@ -516,6 +1141,31 @@ impl WorkerJob {
     }
 
     /// Sends an exception and marks the job as failed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncClient, AsyncWorker};
+    /// let function = "example";
+    /// # let function = gearman_rs::_test_support::unique("job_fail_with_exception");
+    /// # let client_function = function.clone();
+    /// # let client = tokio::spawn(async move {
+    /// #     let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// #     client.option("exceptions").await?;
+    /// #     let handle = client.submit_job(client_function, b"hello").await?;
+    /// #     assert!(matches!(client.wait(&handle).await, Err(gearman_rs::Error::JobFailed(_))));
+    /// #     Ok::<(), gearman_rs::Error>(())
+    /// # });
+    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
+    /// worker.register(&function).await?;
+    /// let mut job = worker.next_job().await?;
+    /// job.fail_with_exception(b"boom").await;
+    /// # client.await.unwrap()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn fail_with_exception(&mut self, exception: impl AsRef<[u8]>) -> Result<()> {
         self.ensure_active()?;
         self.send_handle_payload(PacketType::WorkException, exception.as_ref())

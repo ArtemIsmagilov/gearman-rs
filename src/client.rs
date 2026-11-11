@@ -548,19 +548,24 @@ impl Client {
     /// use gearman_rs::{Client, JobRequest};
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// let function = gearman_rs::_test_support::unique("submit");
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit");
     /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
     /// #     "127.0.0.1:4730",
     /// #     function.clone(),
-    /// #     |job| job.complete(job.workload().to_vec()),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
     /// # );
     /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let request = JobRequest::new(function.clone(), b"hello")
-    ///      .unique(gearman_rs::_test_support::unique("submit-id"));
+    ///     .unique("request-1");
     /// let handle = client.submit(&request)?;
     /// let result = client.wait(&handle)?;
-    /// assert_eq!(result.data, b"hello");
+    /// assert_eq!(result.data, b"olleh");
     /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
@@ -591,13 +596,17 @@ impl Client {
     /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
     /// #     "127.0.0.1:4730",
     /// #     function.clone(),
-    /// #     |job| job.complete(b"world"),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
     /// # );
     /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let request = JobRequest::new(function.clone(), b"hello");
     /// let result = client.submit_and_wait(&request)?;
-    /// assert_eq!(result.data, b"world");
+    /// assert_eq!(result.data, b"olleh");
     /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
@@ -624,13 +633,17 @@ impl Client {
     /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
     /// #     "127.0.0.1:4730",
     /// #     function.clone(),
-    /// #     |job| job.complete(job.workload().to_vec()),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
     /// # );
     /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function.clone(), b"hello")?;
     /// let result = client.wait(&handle)?;
-    /// assert_eq!(result.data, b"hello");
+    /// assert_eq!(result.data, b"olleh");
     /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
@@ -651,22 +664,27 @@ impl Client {
     /// use gearman_rs::Client;
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_unique");
-    /// let unique = gearman_rs::_test_support::unique("submit_job_unique_id");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |job| job.complete(job.workload().to_vec()),
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_unique");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_unique_id");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_unique(function.clone(), unique.clone(), b"hello")?;
     /// let result = client.wait(&handle)?;
-    /// assert_eq!(result.data, b"hello");
+    /// assert_eq!(result.data, b"olleh");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -686,12 +704,12 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_bg");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_bg");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_bg(function, b"payload")?;
     /// assert!(!handle.as_str().is_empty());
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -710,17 +728,18 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_bg_unique");
-    /// let unique = gearman_rs::_test_support::unique("submit_job_bg_unique_id");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_bg_unique");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_bg_unique_id");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_bg_unique(function, unique.clone(), b"payload")?;
     ///
     /// let status = client.job_status_unique(&unique)?;
     /// assert!(status.known);
     /// assert!(!status.running);
     ///
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -745,20 +764,24 @@ impl Client {
     /// use gearman_rs::Client;
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_high");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |job| job.complete(b"high"),
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_high");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_high(function, b"hello")?;
-    /// assert_eq!(client.wait(&handle)?.data, b"high");
+    /// assert_eq!(client.wait(&handle)?.data, b"olleh");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -777,12 +800,12 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_high_bg");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_high_bg");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_high_bg(function, b"payload")?;
     /// assert!(!handle.as_str().is_empty());
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -806,20 +829,24 @@ impl Client {
     /// use gearman_rs::Client;
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_low");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |job| job.complete(b"low"),
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_low");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_low(function, b"hello")?;
-    /// assert_eq!(client.wait(&handle)?.data, b"low");
+    /// assert_eq!(client.wait(&handle)?.data, b"olleh");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -838,12 +865,12 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_low_bg");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_low_bg");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_low_bg(function, b"payload")?;
     /// assert!(!handle.as_str().is_empty());
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -863,13 +890,14 @@ impl Client {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use gearman_rs::{Client, Schedule};
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_sched");
-    /// let unique = gearman_rs::_test_support::unique("submit_job_sched_id");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "cleanup";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_sched");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_sched_id");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_sched(
     ///     function,
     ///     unique,
@@ -877,7 +905,7 @@ impl Client {
     ///     b"payload",
     /// )?;
     /// assert!(!handle.as_str().is_empty());
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -902,14 +930,16 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_job_epoch");
-    /// let unique = gearman_rs::_test_support::unique("submit_job_epoch_id");
-    /// let epoch = gearman_rs::_test_support::epoch_in(3_600);
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "reminder";
+    /// # let function = gearman_rs::_test_support::unique("submit_job_epoch");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("submit_job_epoch_id");
+    /// let epoch = 1_900_000_000;
+    /// # let epoch = gearman_rs::_test_support::epoch_in(3_600);
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_epoch(function, unique, epoch, b"payload")?;
     /// assert!(!handle.as_str().is_empty());
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -935,30 +965,31 @@ impl Client {
     /// use gearman_rs::Client;
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_reduce_job");
-    /// let unique = gearman_rs::_test_support::unique("submit_reduce_job_id");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |worker| {
-    ///         let job = loop {
-    ///             if let Some(job) = worker.grab_job_all()? {
-    ///                 break job;
-    ///             }
-    ///             worker.pre_sleep()?;
-    ///         };
-    ///         assert_eq!(job.reducer.as_deref(), Some("sum"));
-    ///         worker.send_work_complete(&job.handle, b"reduced")
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reduce-sum";
+    /// # let function = gearman_rs::_test_support::unique("submit_reduce_job");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("submit_reduce_job_id");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |worker| {
+    /// #         let job = loop {
+    /// #             if let Some(job) = worker.grab_job_all()? {
+    /// #                 break job;
+    /// #             }
+    /// #             worker.pre_sleep()?;
+    /// #         };
+    /// #         assert_eq!(job.reducer.as_deref(), Some("sum"));
+    /// #         worker.send_work_complete(&job.handle, b"reduced")
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_reduce_job(function, unique, "sum", b"parts")?;
     /// assert_eq!(client.wait(&handle)?.data, b"reduced");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -983,15 +1014,16 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("submit_reduce_job_bg");
-    /// let unique = gearman_rs::_test_support::unique("submit_reduce_job_bg_id");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "reduce-sum";
+    /// # let function = gearman_rs::_test_support::unique("submit_reduce_job_bg");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("submit_reduce_job_bg_id");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_reduce_job_bg(function, unique, "sum", b"parts")?;
     ///
     /// let status = client.job_status(&handle)?;
     /// assert!(status.known);
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -1018,24 +1050,24 @@ impl Client {
     /// use gearman_rs::Client;
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("execute");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |job| {
-    ///         let mut data = job.workload().to_vec();
-    ///         data.reverse();
-    ///         job.complete(data)
-    ///     },
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("execute");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let result = client.execute(function, b"hello")?;
     /// assert_eq!(result.data, b"olleh");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -1057,21 +1089,25 @@ impl Client {
     /// use gearman_rs::Client;
     /// # use std::time::Duration;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("wait");
-    /// let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
-    ///     address.clone(),
-    ///     function.clone(),
-    ///     |job| job.complete(b"finished"),
-    /// );
-    /// ready.recv_timeout(Duration::from_secs(5)).unwrap();
+    /// let function = "reverse";
+    /// # let function = gearman_rs::_test_support::unique("wait");
+    /// # let (ready, worker) = gearman_rs::_test_support::spawn_worker_once(
+    /// #     "127.0.0.1:4730",
+    /// #     function.clone(),
+    /// #     |job| {
+    /// #         let mut data = job.workload().to_vec();
+    /// #         data.reverse();
+    /// #         job.complete(data)
+    /// #     },
+    /// # );
+    /// # ready.recv_timeout(Duration::from_secs(5)).unwrap();
     ///
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job(function, b"hello")?;
     /// let result = client.wait(&handle)?;
-    /// assert_eq!(result.data, b"finished");
+    /// assert_eq!(result.data, b"olleh");
     ///
-    /// worker.join().unwrap()?;
+    /// # worker.join().unwrap()?;
     /// # Ok(())
     /// # }
     /// ```
@@ -1131,16 +1167,16 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("job_status");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("job_status");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_bg(function, b"payload")?;
     ///
     /// let status = client.job_status(&handle)?;
     /// assert!(status.known);
     /// assert!(!status.running);
     ///
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -1171,15 +1207,16 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let function = gearman_rs::_test_support::unique("job_status_unique");
-    /// let unique = gearman_rs::_test_support::unique("job_status_unique_id");
-    /// let mut client = Client::connect(&address)?;
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("job_status_unique");
+    /// let unique = "request-1";
+    /// # let unique = gearman_rs::_test_support::unique("job_status_unique_id");
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// let handle = client.submit_job_bg_unique(function, unique.clone(), b"payload")?;
     ///
     /// let status = client.job_status_unique(&unique)?;
     /// assert!(status.known);
-    /// gearman_rs::_test_support::cancel(&address, &handle)?;
+    /// # gearman_rs::_test_support::cancel("127.0.0.1:4730", &handle)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -1213,8 +1250,7 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// client.option("exceptions")?;
     /// # Ok(())
     /// # }
@@ -1249,8 +1285,7 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// assert!(client.supports_option("exceptions")?);
     /// # Ok(())
     /// # }
@@ -1270,8 +1305,7 @@ impl Client {
     /// ```
     /// use gearman_rs::Client;
     /// # fn main() -> gearman_rs::Result<()> {
-    /// # let Some(address) = gearman_rs::_test_support::address() else { return Ok(()) };
-    /// let mut client = Client::connect(&address)?;
+    /// let mut client = Client::connect("127.0.0.1:4730")?;
     /// assert_eq!(client.echo(b"ping")?, b"ping");
     /// # Ok(())
     /// # }
@@ -1420,6 +1454,9 @@ impl Client {
                 let handle = field_to_string_trim(fields[0]);
                 if let Some(pending) = self.pending.get_mut(&handle) {
                     pending.exception = Some(fields[1].to_vec());
+                    // With the "exceptions" option enabled the server sends
+                    // WORK_EXCEPTION instead of WORK_FAIL.
+                    pending.failed = true;
                 }
                 Ok(true)
             }

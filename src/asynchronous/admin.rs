@@ -82,6 +82,18 @@ impl AdminClient {
     }
 
     /// Sends an arbitrary admin command and returns its response lines.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// let lines = admin.command("version").await?;
+    /// assert!(lines[0].starts_with("OK"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn command(&mut self, command: &str) -> Result<Vec<String>> {
         self.send(command).await?;
         let mode = if is_list_command(command) {
@@ -93,6 +105,19 @@ impl AdminClient {
     }
 
     /// Runs `status`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// for row in admin.status().await? {
+    ///     println!("{}: queued={} running={} workers={}", row.function, row.total, row.running, row.workers);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn status(&mut self) -> Result<Vec<FunctionStatus>> {
         let lines = self.list_command("status").await?;
         let mut result = Vec::with_capacity(lines.len());
@@ -112,6 +137,19 @@ impl AdminClient {
     }
 
     /// Runs `prioritystatus`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// for row in admin.priority_status().await? {
+    ///     println!("{}: high={} normal={} low={} workers={}", row.function, row.high, row.normal, row.low, row.workers);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn priority_status(&mut self) -> Result<Vec<PriorityStatus>> {
         let lines = self.list_command("prioritystatus").await?;
         let mut result = Vec::with_capacity(lines.len());
@@ -134,6 +172,19 @@ impl AdminClient {
     }
 
     /// Runs `workers`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// for worker in admin.workers().await? {
+    ///     println!("{} {} {:?}", worker.ip, worker.client_id, worker.functions);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn workers(&mut self) -> Result<Vec<WorkerInfo>> {
         let lines = self.list_command("workers").await?;
         let mut result = Vec::with_capacity(lines.len());
@@ -164,12 +215,34 @@ impl AdminClient {
     }
 
     /// Runs `version`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// assert!(!admin.version().await?.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn version(&mut self) -> Result<String> {
         let line = self.single_line("version").await?;
         Ok(line.strip_prefix("OK ").unwrap_or(&line).to_owned())
     }
 
     /// Runs `getpid`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// assert!(admin.get_pid().await? > 0);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_pid(&mut self) -> Result<u32> {
         let line = self.single_line("getpid").await?;
         let value = line.strip_prefix("OK ").unwrap_or(&line);
@@ -179,12 +252,36 @@ impl AdminClient {
     }
 
     /// Runs `verbose`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// assert!(!admin.verbose().await?.is_empty());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn verbose(&mut self) -> Result<String> {
         let line = self.single_line("verbose").await?;
         Ok(line.strip_prefix("OK ").unwrap_or(&line).to_owned())
     }
 
     /// Sets one maximum queue size for a function.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let function = "thumbnail";
+    /// # let function = gearman_rs::_test_support::unique("max_queue");
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.max_queue(&function, 100).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn max_queue(&mut self, function: &str, size: u32) -> Result<()> {
         self.single_line(&format!("maxqueue {function} {size}"))
             .await?;
@@ -192,6 +289,19 @@ impl AdminClient {
     }
 
     /// Sets per-priority maximum queue sizes.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let function = "thumbnail";
+    /// # let function = gearman_rs::_test_support::unique("max_queue_priority");
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.max_queue_priority(&function, 10, 50, 100).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn max_queue_priority(
         &mut self,
         function: &str,
@@ -205,12 +315,44 @@ impl AdminClient {
     }
 
     /// Cancels a queued job by handle.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("cancel_job");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg(function, b"payload").await?;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn cancel_job(&mut self, handle: &str) -> Result<()> {
         self.single_line(&format!("cancel job {handle}")).await?;
         Ok(())
     }
 
     /// Runs `show jobs`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// # let function = gearman_rs::_test_support::unique("show_jobs");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg(function, b"payload").await?;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// let jobs = admin.show_jobs().await?;
+    /// assert!(jobs.iter().any(|job| job.handle == handle.as_str()));
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn show_jobs(&mut self) -> Result<Vec<JobInfo>> {
         let lines = self.list_command("show jobs").await?;
         let mut result = Vec::with_capacity(lines.len());
@@ -230,6 +372,25 @@ impl AdminClient {
     }
 
     /// Runs `show unique jobs`.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::{AsyncAdminClient, AsyncClient};
+    /// let function = "resize";
+    /// let unique = "job-1";
+    /// # let function = gearman_rs::_test_support::unique("show_unique_jobs");
+    /// # let unique = gearman_rs::_test_support::unique("show_unique_jobs_id");
+    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
+    /// let handle = client.submit_job_bg_unique(function, unique, b"payload").await?;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// let jobs = admin.show_unique_jobs().await?;
+    /// assert!(jobs.iter().any(|(job, _)| job == handle.as_str()));
+    /// admin.cancel_job(handle.as_str()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn show_unique_jobs(&mut self) -> Result<Vec<(String, String)>> {
         let lines = self.list_command("show unique jobs").await?;
         let mut result = Vec::with_capacity(lines.len());
@@ -246,6 +407,19 @@ impl AdminClient {
     }
 
     /// Creates the named function.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let function = "thumbnail";
+    /// # let function = gearman_rs::_test_support::unique("create_function");
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.create_function(&function).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn create_function(&mut self, function: &str) -> Result<()> {
         self.single_line(&format!("create function {function}"))
             .await?;
@@ -253,6 +427,17 @@ impl AdminClient {
     }
 
     /// Drops the named function.
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.drop_function("thumbnail").await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn drop_function(&mut self, function: &str) -> Result<()> {
         self.single_line(&format!("drop function {function}"))
             .await?;
@@ -275,6 +460,17 @@ impl AdminClient {
     }
 
     /// Shuts down the TCP connection.
+    /// # Examples
+    ///
+    /// ```
+    /// # #[tokio::main]
+    /// # async fn main() -> gearman_rs::Result<()> {
+    /// use gearman_rs::AsyncAdminClient;
+    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
+    /// admin.shutdown().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn shutdown(&mut self) -> Result<()> {
         self.reader.get_mut().shutdown().await?;
         Ok(())
