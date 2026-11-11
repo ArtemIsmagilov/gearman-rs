@@ -36,4 +36,4 @@ jobs:
           docker compose up -d
       - name: Run tests
         run: |
-          cargo test --features tokio,tls
+          cargo test --features tokio-tls
