@@ -7,11 +7,10 @@ readme = "README.md"
 repository = "https://github.com/ArtemIsmagilov/gearman-rs"
 license = "MIT"
 keywords = ["gearman", "job-queue", "worker", "client", "queue"]
-categories = ["network-programming", "asynchronous"]
+categories = ["network-programming", "asynchronous", "authentication"]
 
 [dependencies]
 thiserror = "2"
-
 native-tls = { version = "0.2", optional = true }
 tokio = { version = "1", features = [
   "net",
@@ -24,12 +23,14 @@ tokio-native-tls = { version = "0.3", optional = true }
 
 [features]
 default = []
-# Enables TLS for the synchronous and asynchronous APIs.
-tls = ["dep:native-tls", "dep:tokio-native-tls"]
+# Enables TLS for the synchronous APIs.
+tls = ["dep:native-tls"]
 # Enables the asynchronous client, worker and admin API.
 tokio = ["dep:tokio"]
 # Alias for the `tokio` feature.
 async = ["tokio"]
+# Enables TLS for tokio runtime.
+tokio-tls = ["tokio", "tls", "dep:tokio-native-tls"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }

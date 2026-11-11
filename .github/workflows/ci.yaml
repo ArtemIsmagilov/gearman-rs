@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v7
       - name: Run cross checks
         run: |
-          cargo check --features tokio,tls --all-targets
+          cargo check --features tokio-tls --all-targets
 
   rustfmt:
     name: Format check
