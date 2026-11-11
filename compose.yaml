@@ -3,3 +3,15 @@ services:
     image: artefactual/gearmand:2.2.0-r1-alpine
     ports:
       - "4730:4730"
+
+  gearmand-tls:
+    image: artefactual/gearmand:latest
+    ports:
+      - "4731:4731"
+    volumes:
+      - ./tests/certs/:/etc/gearmand/ssl:ro
+    command:
+      - "--ssl"
+      - "--ssl-ca-file=/etc/gearmand/ssl/ca.pem"
+      - "--ssl-certificate=/etc/gearmand/ssl/server.crt"
+      - "--ssl-key=/etc/gearmand/ssl/server.key"
