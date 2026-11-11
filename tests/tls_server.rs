@@ -8,8 +8,9 @@ use std::time::Duration;
 use gearman_rs::protocol::{Packet, PacketType};
 use gearman_rs::{AdminClient, Client, Error, TlsConfig, Worker};
 
-const CERT_PEM: &[u8] = include_bytes!("certs/localhost.crt");
-const KEY_PEM: &[u8] = include_bytes!("certs/localhost.key");
+const CA_PEM: &[u8] = include_bytes!("certs/ca.pem");
+const CERT_PEM: &[u8] = include_bytes!("certs/server.crt");
+const KEY_PEM: &[u8] = include_bytes!("certs/server.key");
 
 fn listener() -> (TcpListener, SocketAddr) {
     let listener = TcpListener::bind("127.0.0.1:0").expect("bind TLS server");
@@ -24,7 +25,7 @@ fn acceptor() -> native_tls::TlsAcceptor {
 
 fn tls_config() -> TlsConfig {
     TlsConfig::new("localhost")
-        .add_root_certificate_pem(CERT_PEM)
+        .add_root_certificate_pem(CA_PEM)
         .expect("test CA")
 }
 

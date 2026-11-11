@@ -11,6 +11,7 @@ services:
     volumes:
       - ./tests/certs/:/etc/gearmand/ssl:ro
     command:
+      - "--port=4731"
       - "--ssl"
       - "--ssl-ca-file=/etc/gearmand/ssl/ca.pem"
       - "--ssl-certificate=/etc/gearmand/ssl/server.crt"
