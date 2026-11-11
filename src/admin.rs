@@ -6,11 +6,11 @@
 //! `.` (list commands) or by an `OK`/`ERR` line (single-value commands).
 
 use std::io::{BufRead, BufReader, Write};
-use std::net::{Shutdown, TcpStream, ToSocketAddrs};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::error::{Error, Result};
-use crate::net::{Config, connect_tcp};
+use crate::net::{Config, Stream, connect_stream};
 
 /// One row returned by the `status` admin command.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -102,6 +102,13 @@ impl AdminClientBuilder {
         self
     }
 
+    /// Enables TLS using the given configuration.
+    #[cfg(feature = "tls")]
+    pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
+        self.config.tls = Some(tls);
+        self
+    }
+
     /// Connects to a Gearman server.
     pub fn connect<A: ToSocketAddrs>(self, address: A) -> Result<AdminClient> {
         AdminClient::with_config(address, self.config)
@@ -110,7 +117,7 @@ impl AdminClientBuilder {
 
 /// A synchronous Gearman administrative client.
 pub struct AdminClient {
-    reader: BufReader<TcpStream>,
+    reader: BufReader<Stream>,
 }
 
 impl AdminClient {
@@ -126,7 +133,7 @@ impl AdminClient {
 
     fn with_config<A: ToSocketAddrs>(address: A, config: Config) -> Result<Self> {
         Ok(Self {
-            reader: BufReader::new(connect_tcp(address, &config)?),
+            reader: BufReader::new(connect_stream(address, &config)?),
         })
     }
 
@@ -480,19 +487,19 @@ impl AdminClient {
 
     /// Changes the read timeout of the underlying socket.
     pub fn set_read_timeout(&mut self, timeout: Option<Duration>) -> Result<()> {
-        self.reader.get_mut().set_read_timeout(timeout)?;
+        self.reader.get_mut().tcp_mut().set_read_timeout(timeout)?;
         Ok(())
     }
 
     /// Changes the write timeout of the underlying socket.
     pub fn set_write_timeout(&mut self, timeout: Option<Duration>) -> Result<()> {
-        self.reader.get_mut().set_write_timeout(timeout)?;
+        self.reader.get_mut().tcp_mut().set_write_timeout(timeout)?;
         Ok(())
     }
 
     /// Returns a reference to the underlying TCP stream.
     pub fn stream(&self) -> &TcpStream {
-        self.reader.get_ref()
+        self.reader.get_ref().tcp()
     }
 
     /// Shuts down the TCP connection.
@@ -507,7 +514,7 @@ impl AdminClient {
     /// # }
     /// ```
     pub fn shutdown(&mut self) -> Result<()> {
-        self.reader.get_ref().shutdown(Shutdown::Both)?;
+        self.reader.get_ref().shutdown()?;
         Ok(())
     }
 

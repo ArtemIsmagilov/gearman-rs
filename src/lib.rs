@@ -54,6 +54,8 @@ pub mod client;
 pub mod error;
 mod net;
 pub mod protocol;
+#[cfg(feature = "tls")]
+pub mod tls;
 pub mod worker;
 
 pub use admin::{
@@ -66,6 +68,8 @@ pub use client::{
 pub use error::Result;
 pub use error::{Error, JobFailure};
 pub use protocol::{Packet, PacketType};
+#[cfg(feature = "tls")]
+pub use tls::TlsConfig;
 pub use worker::{Job, Worker, WorkerBuilder, WorkerJob};
 
 #[cfg(feature = "tokio")]

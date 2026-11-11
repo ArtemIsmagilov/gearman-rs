@@ -44,6 +44,11 @@ pub enum Error {
     #[error("i/o error: {0}")]
     Io(#[from] io::Error),
 
+    /// TLS handshake or configuration error.
+    #[cfg(feature = "tls")]
+    #[error("TLS error: {0}")]
+    Tls(#[from] native_tls::Error),
+
     /// The peer closed the connection.
     #[error("connection closed by peer")]
     ConnectionClosed,

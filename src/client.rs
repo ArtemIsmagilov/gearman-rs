@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::net::{Shutdown, TcpStream, ToSocketAddrs};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -492,6 +492,13 @@ impl ClientBuilder {
     /// Enables or disables `TCP_NODELAY` (enabled by default).
     pub fn nodelay(mut self, nodelay: bool) -> Self {
         self.config.nodelay = nodelay;
+        self
+    }
+
+    /// Enables TLS using the given configuration.
+    #[cfg(feature = "tls")]
+    pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
+        self.config.tls = Some(tls);
         self
     }
 
@@ -1400,8 +1407,7 @@ impl Client {
     /// # }
     /// ```
     pub fn shutdown(&mut self) -> Result<()> {
-        self.connection.stream().shutdown(Shutdown::Both)?;
-        Ok(())
+        self.connection.shutdown()
     }
 
     fn read_job_created(&mut self) -> Result<JobHandle> {

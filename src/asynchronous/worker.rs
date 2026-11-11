@@ -6,7 +6,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::ToSocketAddrs;
 
-use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 
 use crate::client::JobHandle;
@@ -52,6 +51,13 @@ impl WorkerBuilder {
     /// Enables or disables `TCP_NODELAY`.
     pub fn nodelay(mut self, nodelay: bool) -> Self {
         self.config.nodelay = nodelay;
+        self
+    }
+
+    /// Enables TLS using the given configuration.
+    #[cfg(feature = "tls")]
+    pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
+        self.config.tls = Some(tls);
         self
     }
 
@@ -842,8 +848,7 @@ impl Worker {
     /// # }
     /// ```
     pub async fn shutdown(&mut self) -> Result<()> {
-        self.connection.lock().await.stream_mut().shutdown().await?;
-        Ok(())
+        self.connection.lock().await.shutdown().await
     }
 
     async fn send(&self, kind: PacketType, data: &[u8]) -> Result<()> {

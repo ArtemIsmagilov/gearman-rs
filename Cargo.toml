@@ -13,6 +13,7 @@ categories = ["network-programming", "asynchronous"]
 [dependencies]
 thiserror = "2"
 
+native-tls = { version = "0.2", optional = true }
 tokio = { version = "1", features = [
   "net",
   "io-util",
@@ -20,9 +21,12 @@ tokio = { version = "1", features = [
   "sync",
   "rt",
 ], optional = true }
+tokio-native-tls = { version = "0.3", optional = true }
 
 [features]
 default = []
+# Enables TLS for the synchronous and asynchronous APIs.
+tls = ["dep:native-tls", "dep:tokio-native-tls"]
 # Enables the asynchronous client, worker and admin API.
 tokio = ["dep:tokio"]
 # Alias for the `tokio` feature.

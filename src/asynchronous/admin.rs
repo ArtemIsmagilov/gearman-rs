@@ -10,7 +10,7 @@ use crate::admin::{FunctionStatus, JobInfo, PriorityStatus, WorkerInfo};
 use crate::error::{Error, Result};
 use crate::net::Config;
 
-use super::connection::connect_stream;
+use super::connection::{Stream, connect_stream};
 
 /// Builder for [`AdminClient`].
 #[derive(Debug, Clone, Default)]
@@ -48,6 +48,13 @@ impl AdminClientBuilder {
         self
     }
 
+    /// Enables TLS using the given configuration.
+    #[cfg(feature = "tls")]
+    pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
+        self.config.tls = Some(tls);
+        self
+    }
+
     /// Connects to a Gearman server.
     pub async fn connect<A: ToSocketAddrs>(self, address: A) -> Result<AdminClient> {
         AdminClient::with_config(address, self.config).await
@@ -56,7 +63,7 @@ impl AdminClientBuilder {
 
 /// An asynchronous Gearman administrative client.
 pub struct AdminClient {
-    reader: BufReader<TcpStream>,
+    reader: BufReader<Stream>,
     read_timeout: Option<Duration>,
     write_timeout: Option<Duration>,
 }
@@ -456,7 +463,7 @@ impl AdminClient {
 
     /// Returns a reference to the underlying TCP stream.
     pub fn stream(&self) -> &TcpStream {
-        self.reader.get_ref()
+        self.reader.get_ref().tcp()
     }
 
     /// Shuts down the TCP connection.
@@ -472,8 +479,7 @@ impl AdminClient {
     /// # }
     /// ```
     pub async fn shutdown(&mut self) -> Result<()> {
-        self.reader.get_mut().shutdown().await?;
-        Ok(())
+        self.reader.get_mut().shutdown().await
     }
 
     async fn single_line(&mut self, command: &str) -> Result<String> {

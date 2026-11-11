@@ -42,6 +42,15 @@ gearman-rs = { version = "0.1", features = ["tokio"] }
 
 The feature is also available under the alias `async`.
 
+TLS support is opt-in:
+
+```toml
+[dependencies]
+gearman-rs = { version = "0.1", features = ["tls"] }
+```
+
+The `tls` feature works for both synchronous and asynchronous APIs.
+
 ## Client quick start
 
 ```rust,no_run
@@ -227,6 +236,48 @@ fn main() -> Result<(), gearman_rs::Error> {
 `show_jobs`, `show_unique_jobs`, `create_function`, `drop_function`, `get_pid`
 and a generic `command` method.
 
+## TLS
+
+Enable the `tls` feature to connect through TLS. The same `TlsConfig` is used
+by `Client`, `Worker`, `AdminClient` and their async counterparts.
+
+```rust,no_run
+use gearman_rs::{Client, TlsConfig};
+
+# fn main() -> Result<(), gearman_rs::Error> {
+let tls = TlsConfig::new("gearman.example.com");
+let mut client = Client::builder()
+    .tls(tls)
+    .connect("gearman.example.com:4730")?;
+
+let result = client.execute("reverse", b"hello")?;
+# let _ = result;
+# Ok(())
+# }
+```
+
+`TlsConfig::new` sets the name used for SNI and certificate verification; it
+may differ from the address passed to `connect`. Certificates are checked
+against the platform trust store by default. For a private CA:
+
+```rust,no_run
+# use gearman_rs::{Client, TlsConfig};
+# fn main() -> Result<(), gearman_rs::Error> {
+let tls = TlsConfig::new("gearman.internal")
+    .add_root_certificate_pem(include_bytes!("ca.pem"))?;
+let client = Client::builder()
+    .tls(tls)
+    .connect("10.0.0.10:4730");
+# let _ = client;
+# Ok(())
+# }
+```
+
+`add_root_certificate_der` accepts a single DER certificate. For local
+self-signed servers, `danger_accept_invalid_certs(true)` and
+`danger_accept_invalid_hostnames(true)` disable verification and must only be
+used for development.
+
 ## Low-level protocol
 
 The `protocol` module exposes typed packets and a synchronous codec:
@@ -259,14 +310,12 @@ Binary packet types `1` through `42` are implemented, including:
 - responses: `JOB_CREATED`, `NO_JOB`, `NOOP`, `JOB_ASSIGN*`, `STATUS_RES*`,
   `WORK_*`, `ECHO_RES`, `OPTION_RES`, `ERROR`.
 
-TLS is not implemented; terminate TLS in a proxy if needed.
-
 ## Tests
 
 Unit and mock-server tests run without a Gearman server:
 
 ```bash
-cargo test --features tokio --lib --test mock_server
+cargo test --features tokio,tls --lib --test mock_server --test tls_server
 ```
 
 Documentation tests and integration tests use a real `gearmand` at
@@ -274,7 +323,7 @@ Documentation tests and integration tests use a real `gearmand` at
 
 ```bash
 docker compose up -d
-cargo test --features tokio --doc --test real_server
+cargo test --features tokio,tls --doc --test real_server
 ```
 
 ## License

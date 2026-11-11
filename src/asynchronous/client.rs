@@ -4,8 +4,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tokio::net::ToSocketAddrs;
 
-use tokio::io::AsyncWriteExt;
-
 use crate::client::{
     JobHandle, JobRequest, JobResult, JobStatus, Schedule, parse_status, parse_unique_status,
 };
@@ -61,6 +59,13 @@ impl ClientBuilder {
     /// Enables or disables `TCP_NODELAY` (enabled by default).
     pub fn nodelay(mut self, nodelay: bool) -> Self {
         self.config.nodelay = nodelay;
+        self
+    }
+
+    /// Enables TLS using the given configuration.
+    #[cfg(feature = "tls")]
+    pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
+        self.config.tls = Some(tls);
         self
     }
 
@@ -928,8 +933,7 @@ impl Client {
     /// # }
     /// ```
     pub async fn shutdown(&mut self) -> Result<()> {
-        self.connection.stream_mut().shutdown().await?;
-        Ok(())
+        self.connection.shutdown().await
     }
 
     async fn read_job_created(&mut self) -> Result<JobHandle> {

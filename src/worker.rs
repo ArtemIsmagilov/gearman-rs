@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use std::fmt;
-use std::net::{Shutdown, TcpStream, ToSocketAddrs};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::client::JobHandle;
@@ -87,6 +87,13 @@ impl WorkerBuilder {
     /// Enables or disables `TCP_NODELAY` (enabled by default).
     pub fn nodelay(mut self, nodelay: bool) -> Self {
         self.config.nodelay = nodelay;
+        self
+    }
+
+    /// Enables TLS using the given configuration.
+    #[cfg(feature = "tls")]
+    pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
+        self.config.tls = Some(tls);
         self
     }
 
@@ -911,8 +918,7 @@ impl Worker {
 
     /// Shuts down the TCP connection.
     pub fn shutdown(&mut self) -> Result<()> {
-        self.connection.stream().shutdown(Shutdown::Both)?;
-        Ok(())
+        self.connection.shutdown()
     }
 
     fn grab(&mut self, request: PacketType) -> Result<Option<Job>> {

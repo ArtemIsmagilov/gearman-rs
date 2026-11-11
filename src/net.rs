@@ -1,5 +1,5 @@
-use std::io::Write;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::io::{self, Read, Write};
+use std::net::{Shutdown, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::error::{Error, Result};
@@ -12,6 +12,8 @@ pub(crate) struct Config {
     pub(crate) write_timeout: Option<Duration>,
     pub(crate) nodelay: bool,
     pub(crate) max_packet_size: usize,
+    #[cfg(feature = "tls")]
+    pub(crate) tls: Option<crate::TlsConfig>,
 }
 
 impl Default for Config {
@@ -22,11 +24,69 @@ impl Default for Config {
             write_timeout: None,
             nodelay: true,
             max_packet_size: DEFAULT_MAX_PACKET_SIZE,
+            #[cfg(feature = "tls")]
+            tls: None,
         }
     }
 }
 
-pub(crate) fn connect_tcp<A: ToSocketAddrs>(address: A, config: &Config) -> Result<TcpStream> {
+pub(crate) enum Stream {
+    Plain(TcpStream),
+    #[cfg(feature = "tls")]
+    Tls(Box<native_tls::TlsStream<TcpStream>>),
+}
+
+impl Stream {
+    pub(crate) fn tcp(&self) -> &TcpStream {
+        match self {
+            Self::Plain(stream) => stream,
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => stream.get_ref(),
+        }
+    }
+
+    pub(crate) fn tcp_mut(&mut self) -> &mut TcpStream {
+        match self {
+            Self::Plain(stream) => stream,
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => stream.get_mut(),
+        }
+    }
+
+    pub(crate) fn shutdown(&self) -> io::Result<()> {
+        self.tcp().shutdown(Shutdown::Both)
+    }
+}
+
+impl Read for Stream {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        match self {
+            Self::Plain(stream) => stream.read(buffer),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => stream.read(buffer),
+        }
+    }
+}
+
+impl Write for Stream {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        match self {
+            Self::Plain(stream) => stream.write(buffer),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => stream.write(buffer),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self {
+            Self::Plain(stream) => stream.flush(),
+            #[cfg(feature = "tls")]
+            Self::Tls(stream) => stream.flush(),
+        }
+    }
+}
+
+fn connect_tcp<A: ToSocketAddrs>(address: A, config: &Config) -> Result<TcpStream> {
     let addresses: Vec<_> = address.to_socket_addrs()?.collect();
     if addresses.is_empty() {
         return Err(Error::InvalidArgument(
@@ -57,15 +117,35 @@ pub(crate) fn connect_tcp<A: ToSocketAddrs>(address: A, config: &Config) -> Resu
         .unwrap_or(Error::ConnectionClosed))
 }
 
+pub(crate) fn connect_stream<A: ToSocketAddrs>(address: A, config: &Config) -> Result<Stream> {
+    let stream = connect_tcp(address, config)?;
+
+    #[cfg(feature = "tls")]
+    if let Some(tls) = &config.tls {
+        let connector = tls.connector()?;
+        let stream = connector
+            .connect(tls.server_name(), stream)
+            .map_err(|error| match error {
+                native_tls::HandshakeError::Failure(error) => Error::Tls(error),
+                native_tls::HandshakeError::WouldBlock(_) => Error::Protocol(
+                    "TLS handshake was interrupted by a non-blocking socket".to_owned(),
+                ),
+            })?;
+        return Ok(Stream::Tls(Box::new(stream)));
+    }
+
+    Ok(Stream::Plain(stream))
+}
+
 pub(crate) struct Connection {
-    stream: TcpStream,
+    stream: Stream,
     max_packet_size: usize,
 }
 
 impl Connection {
     pub(crate) fn connect<A: ToSocketAddrs>(address: A, config: &Config) -> Result<Self> {
         Ok(Self {
-            stream: connect_tcp(address, config)?,
+            stream: connect_stream(address, config)?,
             max_packet_size: config.max_packet_size,
         })
     }
@@ -85,17 +165,17 @@ impl Connection {
     }
 
     pub(crate) fn set_read_timeout(&mut self, timeout: Option<Duration>) -> Result<()> {
-        self.stream.set_read_timeout(timeout)?;
+        self.stream.tcp_mut().set_read_timeout(timeout)?;
         Ok(())
     }
 
     pub(crate) fn set_write_timeout(&mut self, timeout: Option<Duration>) -> Result<()> {
-        self.stream.set_write_timeout(timeout)?;
+        self.stream.tcp_mut().set_write_timeout(timeout)?;
         Ok(())
     }
 
     pub(crate) fn set_nodelay(&mut self, nodelay: bool) -> Result<()> {
-        self.stream.set_nodelay(nodelay)?;
+        self.stream.tcp_mut().set_nodelay(nodelay)?;
         Ok(())
     }
 
@@ -104,11 +184,16 @@ impl Connection {
     }
 
     pub(crate) fn stream(&self) -> &TcpStream {
-        &self.stream
+        self.stream.tcp()
     }
 
     pub(crate) fn stream_mut(&mut self) -> &mut TcpStream {
-        &mut self.stream
+        self.stream.tcp_mut()
+    }
+
+    pub(crate) fn shutdown(&mut self) -> Result<()> {
+        self.stream.shutdown()?;
+        Ok(())
     }
 }
 
