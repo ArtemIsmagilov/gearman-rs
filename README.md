@@ -1,5 +1,9 @@
 # gearman-rs
 
+[![ci](https://github.com/ArtemIsmagilov/gearman-rs/actions/workflows/ci.yaml/badge.svg)](https://github.com/ArtemIsmagilov/gearman-rs/actions/workflows/ci.yaml)
+[![crates.io](https://img.shields.io/crates/v/gearman-rs.svg)](https://crates.io/crates/gearman-rs)
+[![docs.rs](https://img.shields.io/docsrs/gearman-rs)](https://docs.rs/gearman-rs)
+
 A complete, ergonomic Rust implementation of the [Gearman](https://gearman.org/)
 job queue protocol.
 
