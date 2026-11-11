@@ -31,6 +31,9 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v7
+      - name: Up gearmand server
+        run: |
+          docker compose up -d
       - name: Run tests
         run: |
           cargo test --features tokio
