@@ -1,4 +1,3 @@
-use std::process;
 use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -10,7 +9,7 @@ fn unique_function(prefix: &str) -> String {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    format!("gearman_rs_{prefix}_{}_{nanos}", process::id())
+    format!("gearman_rs_{prefix}_{:?}_{nanos}", thread::current().id())
 }
 
 #[test]

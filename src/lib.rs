@@ -85,6 +85,7 @@ pub use asynchronous::{
 /// This module is an implementation detail and may change at any time.
 #[doc(hidden)]
 pub mod _test_support {
+    use std::process;
     use std::sync::mpsc;
     use std::thread;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -98,7 +99,7 @@ pub mod _test_support {
             .expect("system clock is before the Unix epoch")
             .as_nanos();
         let prefix = &prefix[..prefix.len().min(32)];
-        format!("grs_{prefix}_{:?}_{nanos:x}", thread::current().id())
+        format!("grs_{prefix}_{:?}_{nanos:x}", process::id())
     }
 
     /// Returns a Unix timestamp a number of seconds in the future.
