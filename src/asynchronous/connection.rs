@@ -13,7 +13,7 @@ use crate::protocol::{self, HEADER_SIZE, MAGIC_RESPONSE, Packet, PacketType};
 
 pub(crate) enum Stream {
     Plain(TcpStream),
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "tokio-tls")]
     Tls(Box<tokio_native_tls::TlsStream<TcpStream>>),
 }
 
@@ -21,7 +21,7 @@ impl Stream {
     pub(crate) fn tcp(&self) -> &TcpStream {
         match self {
             Self::Plain(stream) => stream,
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tokio-tls")]
             Self::Tls(stream) => stream.get_ref().get_ref().get_ref(),
         }
     }
@@ -29,7 +29,7 @@ impl Stream {
     pub(crate) fn tcp_mut(&mut self) -> &mut TcpStream {
         match self {
             Self::Plain(stream) => stream,
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tokio-tls")]
             Self::Tls(stream) => stream.get_mut().get_mut().get_mut(),
         }
     }
@@ -48,7 +48,7 @@ impl AsyncRead for Stream {
     ) -> Poll<io::Result<()>> {
         match self.get_mut() {
             Self::Plain(stream) => Pin::new(stream).poll_read(context, buffer),
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tokio-tls")]
             Self::Tls(stream) => Pin::new(stream.as_mut()).poll_read(context, buffer),
         }
     }
@@ -62,7 +62,7 @@ impl AsyncWrite for Stream {
     ) -> Poll<io::Result<usize>> {
         match self.get_mut() {
             Self::Plain(stream) => Pin::new(stream).poll_write(context, buffer),
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tokio-tls")]
             Self::Tls(stream) => Pin::new(stream.as_mut()).poll_write(context, buffer),
         }
     }
@@ -70,7 +70,7 @@ impl AsyncWrite for Stream {
     fn poll_flush(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<io::Result<()>> {
         match self.get_mut() {
             Self::Plain(stream) => Pin::new(stream).poll_flush(context),
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tokio-tls")]
             Self::Tls(stream) => Pin::new(stream.as_mut()).poll_flush(context),
         }
     }
@@ -78,7 +78,7 @@ impl AsyncWrite for Stream {
     fn poll_shutdown(self: Pin<&mut Self>, context: &mut Context<'_>) -> Poll<io::Result<()>> {
         match self.get_mut() {
             Self::Plain(stream) => Pin::new(stream).poll_shutdown(context),
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tokio-tls")]
             Self::Tls(stream) => Pin::new(stream.as_mut()).poll_shutdown(context),
         }
     }
@@ -217,7 +217,7 @@ pub(crate) async fn connect_stream<A: ToSocketAddrs>(
     };
     stream.set_nodelay(config.nodelay)?;
 
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "tokio-tls")]
     if let Some(tls) = &config.tls {
         let connector = tokio_native_tls::TlsConnector::from(tls.connector()?);
         let stream = connector

@@ -46,14 +46,16 @@ gearman-rs = { version = "0.1", features = ["tokio"] }
 
 The feature is also available under the alias `async`.
 
-TLS support is opt-in:
+TLS support is opt-in and split between the synchronous and asynchronous APIs:
 
 ```toml
 [dependencies]
+# TLS for the synchronous client, worker and admin client.
 gearman-rs = { version = "0.1", features = ["tls"] }
-```
 
-The `tls` feature works for both synchronous and asynchronous APIs.
+# TLS for the asynchronous API (implies `tls` and `tokio`).
+# gearman-rs = { version = "0.1", features = ["tokio-tls"] }
+```
 
 ## Client quick start
 
@@ -242,8 +244,9 @@ and a generic `command` method.
 
 ## TLS
 
-Enable the `tls` feature to connect through TLS. The same `TlsConfig` is used
-by `Client`, `Worker`, `AdminClient` and their async counterparts.
+Enable the `tls` feature for the synchronous APIs and `tokio-tls` for the
+asynchronous ones. The same `TlsConfig` is used by `Client`, `Worker`,
+`AdminClient` and their async counterparts.
 
 ```rust,no_run
 use gearman_rs::{Client, TlsConfig};
@@ -319,7 +322,7 @@ Binary packet types `1` through `42` are implemented, including:
 Unit and mock-server tests run without a Gearman server:
 
 ```bash
-cargo test --features tokio,tls --lib --test mock_server --test tls_server
+cargo test --features tokio-tls --lib --test mock_server --test tls_server
 ```
 
 Documentation tests and integration tests use a real `gearmand` at
@@ -327,7 +330,7 @@ Documentation tests and integration tests use a real `gearmand` at
 
 ```bash
 docker compose up -d
-cargo test --features tokio,tls --doc --test real_server
+cargo test --features tokio-tls --doc --test real_server
 ```
 
 ## License

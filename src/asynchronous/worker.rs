@@ -55,7 +55,7 @@ impl WorkerBuilder {
     }
 
     /// Enables TLS using the given configuration.
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "tokio-tls")]
     pub fn tls(mut self, tls: crate::TlsConfig) -> Self {
         self.config.tls = Some(tls);
         self
