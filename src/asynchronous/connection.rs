@@ -34,6 +34,17 @@ impl Stream {
         }
     }
 
+    pub(crate) fn is_tls(&self) -> bool {
+        #[cfg(feature = "tokio-tls")]
+        {
+            matches!(self, Self::Tls(_))
+        }
+        #[cfg(not(feature = "tokio-tls"))]
+        {
+            false
+        }
+    }
+
     pub(crate) async fn shutdown(&mut self) -> Result<()> {
         AsyncWriteExt::shutdown(self).await?;
         Ok(())
@@ -152,6 +163,10 @@ impl Connection {
         self.stream.tcp_mut()
     }
 
+    pub(crate) fn is_tls(&self) -> bool {
+        self.stream.is_tls()
+    }
+
     pub(crate) async fn shutdown(&mut self) -> Result<()> {
         self.stream.shutdown().await
     }
@@ -208,24 +223,27 @@ pub(crate) async fn connect_stream<A: ToSocketAddrs>(
     address: A,
     config: &Config,
 ) -> Result<Stream> {
-    let connect = TcpStream::connect(address);
-    let stream = match config.connect_timeout {
+    let connect = async {
+        let stream = TcpStream::connect(address).await?;
+        stream.set_nodelay(config.nodelay)?;
+
+        #[cfg(feature = "tokio-tls")]
+        if let Some(tls) = &config.tls {
+            let connector = tokio_native_tls::TlsConnector::from(tls.connector()?);
+            let stream = connector
+                .connect(tls.server_name(), stream)
+                .await
+                .map_err(Error::Tls)?;
+            return Ok(Stream::Tls(Box::new(stream)));
+        }
+
+        Ok(Stream::Plain(stream))
+    };
+
+    match config.connect_timeout {
         Some(timeout) => tokio::time::timeout(timeout, connect)
             .await
-            .map_err(|_| Error::Timeout("connecting"))??,
-        None => connect.await?,
-    };
-    stream.set_nodelay(config.nodelay)?;
-
-    #[cfg(feature = "tokio-tls")]
-    if let Some(tls) = &config.tls {
-        let connector = tokio_native_tls::TlsConnector::from(tls.connector()?);
-        let stream = connector
-            .connect(tls.server_name(), stream)
-            .await
-            .map_err(Error::Tls)?;
-        return Ok(Stream::Tls(Box::new(stream)));
+            .map_err(|_| Error::Timeout("connecting"))?,
+        None => connect.await,
     }
-
-    Ok(Stream::Plain(stream))
 }

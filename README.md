@@ -52,9 +52,12 @@ TLS support is opt-in and split between the synchronous and asynchronous APIs:
 [dependencies]
 # TLS for the synchronous client, worker and admin client.
 gearman-rs = { version = "0.1", features = ["tls"] }
+```
 
+```toml
+[dependencies]
 # TLS for the asynchronous API (implies `tls` and `tokio`).
-# gearman-rs = { version = "0.1", features = ["tokio-tls"] }
+gearman-rs = { version = "0.1", features = ["tokio-tls"] }
 ```
 
 ## Client quick start
@@ -263,6 +266,25 @@ let result = client.execute("reverse", b"hello")?;
 # }
 ```
 
+The asynchronous API uses the same configuration:
+
+```rust,no_run
+use gearman_rs::{AsyncClient, TlsConfig};
+
+# #[tokio::main]
+# async fn main() -> Result<(), gearman_rs::Error> {
+let tls = TlsConfig::new("gearman.example.com");
+let mut client = AsyncClient::builder()
+    .tls(tls)
+    .connect("gearman.example.com:4730")
+    .await?;
+
+let result = client.execute("reverse", b"hello").await?;
+# let _ = result;
+# Ok(())
+# }
+```
+
 `TlsConfig::new` sets the name used for SNI and certificate verification; it
 may differ from the address passed to `connect`. Certificates are checked
 against the platform trust store by default. For a private CA:
@@ -280,7 +302,8 @@ let client = Client::builder()
 # }
 ```
 
-`add_root_certificate_der` accepts a single DER certificate. For local
+`add_root_certificate_der` accepts a single DER certificate. Additional roots
+are added to the platform trust store rather than replacing it. For local
 self-signed servers, `danger_accept_invalid_certs(true)` and
 `danger_accept_invalid_hostnames(true)` disable verification and must only be
 used for development.
@@ -326,11 +349,11 @@ cargo test --features tokio-tls --lib --test mock_server --test tls_server
 ```
 
 Documentation tests and integration tests use a real `gearmand` at
-`127.0.0.1:4730`:
+`127.0.0.1:4730` and a TLS-enabled `gearmand` at `127.0.0.1:4731`:
 
 ```bash
 docker compose up -d
-cargo test --features tokio-tls --doc --test real_server
+cargo test --features tokio-tls --doc --test real_server --test real_tls_server
 ```
 
 ## License

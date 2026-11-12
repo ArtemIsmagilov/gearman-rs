@@ -471,7 +471,7 @@ impl ClientBuilder {
         Self::default()
     }
 
-    /// Sets the TCP connect timeout.
+    /// Sets the timeout for the TCP connect and TLS handshake.
     pub fn connect_timeout(mut self, timeout: Duration) -> Self {
         self.config.connect_timeout = Some(timeout);
         self
@@ -1385,13 +1385,26 @@ impl Client {
     }
 
     /// Returns a reference to the underlying TCP stream.
+    ///
+    /// When the connection uses TLS this is the raw encrypted transport.
+    /// Reading from or writing to it directly bypasses TLS and corrupts the
+    /// connection.
     pub fn stream(&self) -> &TcpStream {
         self.connection.stream()
     }
 
     /// Returns a mutable reference to the underlying TCP stream.
+    ///
+    /// When the connection uses TLS, writing to this stream bypasses TLS and
+    /// corrupts the connection. Use it only to inspect or change socket
+    /// options; check [`Self::is_tls`] first when in doubt.
     pub fn stream_mut(&mut self) -> &mut TcpStream {
         self.connection.stream_mut()
+    }
+
+    /// Returns `true` when the connection is encrypted with TLS.
+    pub fn is_tls(&self) -> bool {
+        self.connection.is_tls()
     }
 
     /// Shuts down the TCP connection.

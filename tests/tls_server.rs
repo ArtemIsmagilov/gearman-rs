@@ -3,7 +3,7 @@
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use gearman_rs::protocol::{Packet, PacketType};
 use gearman_rs::{AdminClient, Client, Error, TlsConfig, Worker};
@@ -81,6 +81,7 @@ fn sync_client_uses_tls() {
         .tls(tls_config())
         .connect(address)
         .expect("TLS client");
+    assert!(client.is_tls());
     let result = client.execute("reverse", b"hello").expect("job result");
     assert_eq!(result.data, b"olleh");
 
@@ -138,7 +139,68 @@ fn untrusted_certificate_is_rejected() {
     server.join().expect("TLS server");
 }
 
-#[cfg(feature = "tokio")]
+#[test]
+fn sync_tls_handshake_respects_connect_timeout() {
+    let (listener, address) = listener();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept connection");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("read timeout");
+        let mut buffer = [0u8; 4096];
+        let _ = stream.read(&mut buffer);
+        let _ = stream.read(&mut buffer);
+    });
+
+    let start = Instant::now();
+    let result = Client::builder()
+        .connect_timeout(Duration::from_millis(100))
+        .tls(tls_config())
+        .connect(address);
+    assert!(result.is_err());
+    assert!(start.elapsed() < Duration::from_secs(2));
+
+    server.join().expect("TLS server");
+}
+
+#[test]
+fn invalid_certificate_can_be_accepted_explicitly() {
+    let (address, server) = spawn_server(|stream| {
+        assert_eq!(read_line(stream), "version");
+        stream.write_all(b"OK 2.2.0\n").expect("write response");
+        stream.flush().expect("flush");
+    });
+
+    let mut admin = AdminClient::builder()
+        .tls(TlsConfig::new("localhost").danger_accept_invalid_certs(true))
+        .connect(address)
+        .expect("TLS admin client");
+    assert_eq!(admin.version().expect("version"), "2.2.0");
+
+    server.join().expect("TLS server");
+}
+
+#[test]
+fn invalid_hostname_can_be_ignored_explicitly() {
+    let (address, server) = spawn_server(|stream| {
+        assert_eq!(read_line(stream), "version");
+        stream.write_all(b"OK 2.2.0\n").expect("write response");
+        stream.flush().expect("flush");
+    });
+
+    let tls = TlsConfig::new("wrong.example")
+        .add_root_certificate_pem(CA_PEM)
+        .expect("test CA")
+        .danger_accept_invalid_hostnames(true);
+    let mut admin = AdminClient::builder()
+        .tls(tls)
+        .connect(address)
+        .expect("TLS admin client");
+    assert_eq!(admin.version().expect("version"), "2.2.0");
+
+    server.join().expect("TLS server");
+}
+
 #[tokio::test]
 async fn async_client_uses_tls() {
     use gearman_rs::AsyncClient;
@@ -161,11 +223,81 @@ async fn async_client_uses_tls() {
         .connect(address)
         .await
         .expect("TLS async client");
+    assert!(client.is_tls());
     let result = client
         .execute("reverse", b"hello")
         .await
         .expect("job result");
     assert_eq!(result.data, b"olleh");
+
+    server.join().expect("TLS server");
+}
+
+#[tokio::test]
+async fn async_tls_handshake_respects_connect_timeout() {
+    use gearman_rs::AsyncClient;
+
+    let (listener, address) = listener();
+    let server = thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept connection");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .expect("read timeout");
+        let mut buffer = [0u8; 4096];
+        let _ = stream.read(&mut buffer);
+        let _ = stream.read(&mut buffer);
+    });
+
+    let start = Instant::now();
+    let result = AsyncClient::builder()
+        .connect_timeout(Duration::from_millis(100))
+        .tls(tls_config())
+        .connect(address)
+        .await;
+    assert!(matches!(result, Err(Error::Timeout("connecting"))));
+    assert!(start.elapsed() < Duration::from_secs(2));
+
+    server.join().expect("TLS server");
+}
+
+#[tokio::test]
+async fn async_worker_uses_tls() {
+    use gearman_rs::AsyncWorker;
+
+    let (address, server) = spawn_server(|stream| {
+        let request = Packet::read_request(stream, 1 << 20).expect("request");
+        assert_eq!(request.kind, PacketType::CanDo);
+        assert_eq!(request.data, b"reverse");
+    });
+
+    let mut worker = AsyncWorker::builder()
+        .tls(tls_config())
+        .connect(address)
+        .await
+        .expect("TLS async worker");
+    assert!(worker.is_tls().await);
+    worker.register("reverse").await.expect("register");
+
+    server.join().expect("TLS server");
+}
+
+#[tokio::test]
+async fn async_admin_client_uses_tls() {
+    use gearman_rs::AsyncAdminClient;
+
+    let (address, server) = spawn_server(|stream| {
+        assert_eq!(read_line(stream), "version");
+        stream.write_all(b"OK 2.2.0\n").expect("write response");
+        stream.flush().expect("flush");
+    });
+
+    let mut admin = AsyncAdminClient::builder()
+        .tls(tls_config())
+        .connect(address)
+        .await
+        .expect("TLS async admin client");
+    assert!(admin.is_tls());
+    assert_eq!(admin.version().await.expect("version"), "2.2.0");
 
     server.join().expect("TLS server");
 }

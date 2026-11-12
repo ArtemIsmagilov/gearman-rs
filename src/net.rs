@@ -53,8 +53,29 @@ impl Stream {
         }
     }
 
-    pub(crate) fn shutdown(&self) -> io::Result<()> {
-        self.tcp().shutdown(Shutdown::Both)
+    pub(crate) fn is_tls(&self) -> bool {
+        #[cfg(feature = "tls")]
+        {
+            matches!(self, Self::Tls(_))
+        }
+        #[cfg(not(feature = "tls"))]
+        {
+            false
+        }
+    }
+
+    pub(crate) fn shutdown(&mut self) -> io::Result<()> {
+        #[cfg(feature = "tls")]
+        let tls_result = if let Self::Tls(stream) = self {
+            stream.shutdown()
+        } else {
+            Ok(())
+        };
+        #[cfg(not(feature = "tls"))]
+        let tls_result: io::Result<()> = Ok(());
+
+        let tcp_result = self.tcp().shutdown(Shutdown::Both);
+        tls_result.and(tcp_result)
     }
 }
 
@@ -123,18 +144,46 @@ pub(crate) fn connect_stream<A: ToSocketAddrs>(address: A, config: &Config) -> R
     #[cfg(feature = "tls")]
     if let Some(tls) = &config.tls {
         let connector = tls.connector()?;
-        let stream = connector
-            .connect(tls.server_name(), stream)
-            .map_err(|error| match error {
-                native_tls::HandshakeError::Failure(error) => Error::Tls(error),
-                native_tls::HandshakeError::WouldBlock(_) => Error::Protocol(
+
+        // Bound the handshake by the connect timeout in addition to any
+        // configured read/write timeouts, then restore the read/write timeouts
+        // for normal operation.
+        stream.set_read_timeout(handshake_timeout(
+            config.read_timeout,
+            config.connect_timeout,
+        ))?;
+        stream.set_write_timeout(handshake_timeout(
+            config.write_timeout,
+            config.connect_timeout,
+        ))?;
+
+        let stream = match connector.connect(tls.server_name(), stream) {
+            Ok(stream) => stream,
+            Err(native_tls::HandshakeError::Failure(error)) => return Err(Error::Tls(error)),
+            Err(native_tls::HandshakeError::WouldBlock(_)) => {
+                return Err(Error::Protocol(
                     "TLS handshake was interrupted by a non-blocking socket".to_owned(),
-                ),
-            })?;
+                ));
+            }
+        };
+
+        stream.get_ref().set_read_timeout(config.read_timeout)?;
+        stream.get_ref().set_write_timeout(config.write_timeout)?;
         return Ok(Stream::Tls(Box::new(stream)));
     }
 
     Ok(Stream::Plain(stream))
+}
+
+#[cfg(feature = "tls")]
+fn handshake_timeout(
+    configured: Option<Duration>,
+    connect_timeout: Option<Duration>,
+) -> Option<Duration> {
+    match (configured, connect_timeout) {
+        (Some(configured), Some(connect)) => Some(configured.min(connect)),
+        (configured, connect) => configured.or(connect),
+    }
 }
 
 pub(crate) struct Connection {
@@ -189,6 +238,10 @@ impl Connection {
 
     pub(crate) fn stream_mut(&mut self) -> &mut TcpStream {
         self.stream.tcp_mut()
+    }
+
+    pub(crate) fn is_tls(&self) -> bool {
+        self.stream.is_tls()
     }
 
     pub(crate) fn shutdown(&mut self) -> Result<()> {

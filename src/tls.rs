@@ -1,8 +1,10 @@
 //! TLS configuration for the client, worker and admin APIs.
 //!
-//! TLS is enabled with the `tls` feature. Certificates are verified against the
-//! platform trust store by default. Use [`TlsConfig::add_root_certificate_pem`]
-//! or [`TlsConfig::add_root_certificate_der`] for a private CA, or
+//! TLS is enabled with the `tls` feature for the synchronous APIs and with the
+//! `tokio-tls` feature for the asynchronous APIs. Certificates are verified
+//! against the platform trust store by default. Use
+//! [`TlsConfig::add_root_certificate_pem`] or
+//! [`TlsConfig::add_root_certificate_der`] for a private CA, or
 //! [`TlsConfig::danger_accept_invalid_certs`] for self-signed development
 //! servers.
 //!
@@ -55,7 +57,9 @@ impl TlsConfig {
 
     /// Adds one or more PEM-encoded root certificates.
     ///
-    /// The buffer may contain multiple concatenated certificates.
+    /// The buffer may contain multiple concatenated certificates. The
+    /// certificates are added to the platform trust store rather than
+    /// replacing it.
     pub fn add_root_certificate_pem(mut self, pem: impl AsRef<[u8]>) -> Result<Self> {
         let certificates = native_tls::Certificate::stack_from_pem(pem.as_ref())?;
         self.root_certificates.extend(certificates);

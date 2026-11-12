@@ -2,6 +2,7 @@
 name = "gearman-rs"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 description = "A complete, ergonomic Gearman client and worker implementation in Rust"
 readme = "README.md"
 repository = "https://github.com/ArtemIsmagilov/gearman-rs"
@@ -29,7 +30,7 @@ tls = ["dep:native-tls"]
 tokio = ["dep:tokio"]
 # Alias for the `tokio` feature.
 async = ["tokio"]
-# Enables TLS for tokio runtime.
+# Enables TLS for the asynchronous client, worker and admin APIs.
 tokio-tls = ["tokio", "tls", "dep:tokio-native-tls"]
 
 [dev-dependencies]

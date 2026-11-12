@@ -30,7 +30,7 @@ impl WorkerBuilder {
         Self::default()
     }
 
-    /// Sets the TCP connect timeout.
+    /// Sets the timeout for the TCP connect and TLS handshake.
     pub fn connect_timeout(mut self, timeout: Duration) -> Self {
         self.config.connect_timeout = Some(timeout);
         self
@@ -833,6 +833,11 @@ impl Worker {
             .lock()
             .await
             .set_max_packet_size(max_packet_size);
+    }
+
+    /// Returns `true` when the connection is encrypted with TLS.
+    pub async fn is_tls(&self) -> bool {
+        self.connection.lock().await.is_tls()
     }
 
     /// Shuts down the TCP connection.

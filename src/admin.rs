@@ -78,7 +78,7 @@ impl AdminClientBuilder {
         Self::default()
     }
 
-    /// Sets the TCP connect timeout.
+    /// Sets the timeout for the TCP connect and TLS handshake.
     pub fn connect_timeout(mut self, timeout: Duration) -> Self {
         self.config.connect_timeout = Some(timeout);
         self
@@ -498,8 +498,17 @@ impl AdminClient {
     }
 
     /// Returns a reference to the underlying TCP stream.
+    ///
+    /// When the connection uses TLS this is the raw encrypted transport.
+    /// Reading from or writing to it directly bypasses TLS and corrupts the
+    /// connection.
     pub fn stream(&self) -> &TcpStream {
         self.reader.get_ref().tcp()
+    }
+
+    /// Returns `true` when the connection is encrypted with TLS.
+    pub fn is_tls(&self) -> bool {
+        self.reader.get_ref().is_tls()
     }
 
     /// Shuts down the TCP connection.
@@ -514,7 +523,7 @@ impl AdminClient {
     /// # }
     /// ```
     pub fn shutdown(&mut self) -> Result<()> {
-        self.reader.get_ref().shutdown()?;
+        self.reader.get_mut().shutdown()?;
         Ok(())
     }
 
