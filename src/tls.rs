@@ -50,8 +50,8 @@ impl TlsConfig {
         }
     }
 
-    /// Returns the name used for SNI and certificate verification.
-    pub fn server_name(&self) -> &str {
+    /// Returns the server name used for SNI and certificate verification.
+    pub(crate) fn server_name(&self) -> &str {
         &self.server_name
     }
 

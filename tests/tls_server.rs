@@ -81,7 +81,6 @@ fn sync_client_uses_tls() {
         .tls(tls_config())
         .connect(address)
         .expect("TLS client");
-    assert!(client.is_tls());
     let result = client.execute("reverse", b"hello").expect("job result");
     assert_eq!(result.data, b"olleh");
 
@@ -201,6 +200,7 @@ fn invalid_hostname_can_be_ignored_explicitly() {
     server.join().expect("TLS server");
 }
 
+#[cfg(feature = "tokio-tls")]
 #[tokio::test]
 async fn async_client_uses_tls() {
     use gearman_rs::AsyncClient;
@@ -223,7 +223,6 @@ async fn async_client_uses_tls() {
         .connect(address)
         .await
         .expect("TLS async client");
-    assert!(client.is_tls());
     let result = client
         .execute("reverse", b"hello")
         .await
@@ -233,6 +232,7 @@ async fn async_client_uses_tls() {
     server.join().expect("TLS server");
 }
 
+#[cfg(feature = "tokio-tls")]
 #[tokio::test]
 async fn async_tls_handshake_respects_connect_timeout() {
     use gearman_rs::AsyncClient;
@@ -260,6 +260,7 @@ async fn async_tls_handshake_respects_connect_timeout() {
     server.join().expect("TLS server");
 }
 
+#[cfg(feature = "tokio-tls")]
 #[tokio::test]
 async fn async_worker_uses_tls() {
     use gearman_rs::AsyncWorker;
@@ -275,12 +276,12 @@ async fn async_worker_uses_tls() {
         .connect(address)
         .await
         .expect("TLS async worker");
-    assert!(worker.is_tls().await);
     worker.register("reverse").await.expect("register");
 
     server.join().expect("TLS server");
 }
 
+#[cfg(feature = "tokio-tls")]
 #[tokio::test]
 async fn async_admin_client_uses_tls() {
     use gearman_rs::AsyncAdminClient;
@@ -296,7 +297,6 @@ async fn async_admin_client_uses_tls() {
         .connect(address)
         .await
         .expect("TLS async admin client");
-    assert!(admin.is_tls());
     assert_eq!(admin.version().await.expect("version"), "2.2.0");
 
     server.join().expect("TLS server");

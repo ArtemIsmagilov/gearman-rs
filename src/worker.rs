@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use std::fmt;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::time::Duration;
 
 use crate::client::JobHandle;
@@ -799,9 +799,9 @@ impl Worker {
     /// // `run` loops forever, so stop it after the first job.
     /// let result = worker.run(|job| {
     ///     job.complete(job.workload().to_vec())?;
-    ///     job.worker_mut().shutdown()
+    ///     Err(gearman_rs::Error::InvalidArgument("stop".to_owned()))
     /// });
-    /// // Closing the socket makes the loop return an I/O error.
+    /// // The error from the handler is returned by `run`.
     /// assert!(result.is_err());
     /// # client.join().unwrap();
     /// # Ok(())
@@ -904,34 +904,6 @@ impl Worker {
     /// Changes the maximum accepted packet size.
     pub fn set_max_packet_size(&mut self, max_packet_size: usize) {
         self.connection.set_max_packet_size(max_packet_size);
-    }
-
-    /// Returns a reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS this is the raw encrypted transport.
-    /// Reading from or writing to it directly bypasses TLS and corrupts the
-    /// connection.
-    pub fn stream(&self) -> &TcpStream {
-        self.connection.stream()
-    }
-
-    /// Returns a mutable reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS, writing to this stream bypasses TLS and
-    /// corrupts the connection. Use it only to inspect or change socket
-    /// options; check [`Self::is_tls`] first when in doubt.
-    pub fn stream_mut(&mut self) -> &mut TcpStream {
-        self.connection.stream_mut()
-    }
-
-    /// Returns `true` when the connection is encrypted with TLS.
-    pub fn is_tls(&self) -> bool {
-        self.connection.is_tls()
-    }
-
-    /// Shuts down the TCP connection.
-    pub fn shutdown(&mut self) -> Result<()> {
-        self.connection.shutdown()
     }
 
     fn grab(&mut self, request: PacketType) -> Result<Option<Job>> {
@@ -1254,11 +1226,6 @@ impl<'a> WorkerJob<'a> {
         self.worker.send_work_fail(&self.job.handle)?;
         self.finished = true;
         Ok(())
-    }
-
-    /// Returns mutable access to the worker for low-level protocol use.
-    pub fn worker_mut(&mut self) -> &mut Worker {
-        self.worker
     }
 
     fn ensure_active(&self) -> Result<()> {

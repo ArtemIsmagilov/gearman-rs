@@ -910,45 +910,6 @@ impl Client {
         self.connection.set_max_packet_size(max_packet_size);
     }
 
-    /// Returns a reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS this is the raw encrypted transport.
-    /// Reading from or writing to it directly bypasses TLS and corrupts the
-    /// connection.
-    pub fn stream(&self) -> &tokio::net::TcpStream {
-        self.connection.stream()
-    }
-
-    /// Returns a mutable reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS, writing to this stream bypasses TLS and
-    /// corrupts the connection. Use it only to inspect or change socket
-    /// options; check [`Self::is_tls`] first when in doubt.
-    pub fn stream_mut(&mut self) -> &mut tokio::net::TcpStream {
-        self.connection.stream_mut()
-    }
-
-    /// Returns `true` when the connection is encrypted with TLS.
-    pub fn is_tls(&self) -> bool {
-        self.connection.is_tls()
-    }
-
-    /// Shuts down the TCP connection.
-    /// # Examples
-    ///
-    /// ```
-    /// # #[tokio::main]
-    /// # async fn main() -> gearman_rs::Result<()> {
-    /// use gearman_rs::AsyncClient;
-    /// let mut client = AsyncClient::connect("127.0.0.1:4730").await?;
-    /// client.shutdown().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn shutdown(&mut self) -> Result<()> {
-        self.connection.shutdown().await
-    }
-
     async fn read_job_created(&mut self) -> Result<JobHandle> {
         loop {
             let packet = self.connection.recv().await?;

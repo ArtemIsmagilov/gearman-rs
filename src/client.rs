@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -1382,45 +1382,6 @@ impl Client {
     /// Changes the maximum accepted packet size.
     pub fn set_max_packet_size(&mut self, max_packet_size: usize) {
         self.connection.set_max_packet_size(max_packet_size);
-    }
-
-    /// Returns a reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS this is the raw encrypted transport.
-    /// Reading from or writing to it directly bypasses TLS and corrupts the
-    /// connection.
-    pub fn stream(&self) -> &TcpStream {
-        self.connection.stream()
-    }
-
-    /// Returns a mutable reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS, writing to this stream bypasses TLS and
-    /// corrupts the connection. Use it only to inspect or change socket
-    /// options; check [`Self::is_tls`] first when in doubt.
-    pub fn stream_mut(&mut self) -> &mut TcpStream {
-        self.connection.stream_mut()
-    }
-
-    /// Returns `true` when the connection is encrypted with TLS.
-    pub fn is_tls(&self) -> bool {
-        self.connection.is_tls()
-    }
-
-    /// Shuts down the TCP connection.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use gearman_rs::Client;
-    /// # fn main() -> gearman_rs::Result<()> {
-    /// let mut client = Client::connect("127.0.0.1:4730")?;
-    /// client.shutdown()?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn shutdown(&mut self) -> Result<()> {
-        self.connection.shutdown()
     }
 
     fn read_job_created(&mut self) -> Result<JobHandle> {

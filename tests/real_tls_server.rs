@@ -1,4 +1,8 @@
-use gearman_rs::{AsyncClient, Client, TlsConfig};
+#![cfg(feature = "tls")]
+
+#[cfg(feature = "tokio-tls")]
+use gearman_rs::AsyncClient;
+use gearman_rs::{Client, TlsConfig};
 
 #[test]
 fn test_tls_connection() -> gearman_rs::Result<()> {
@@ -13,6 +17,7 @@ fn test_tls_connection() -> gearman_rs::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "tokio-tls")]
 #[tokio::test]
 async fn test_async_tls_connection() -> gearman_rs::Result<()> {
     let mut c = AsyncClient::builder()

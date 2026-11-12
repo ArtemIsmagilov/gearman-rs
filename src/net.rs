@@ -1,5 +1,5 @@
 use std::io::{self, Read, Write};
-use std::net::{Shutdown, TcpStream, ToSocketAddrs};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
 use crate::error::{Error, Result};
@@ -37,45 +37,12 @@ pub(crate) enum Stream {
 }
 
 impl Stream {
-    pub(crate) fn tcp(&self) -> &TcpStream {
-        match self {
-            Self::Plain(stream) => stream,
-            #[cfg(feature = "tls")]
-            Self::Tls(stream) => stream.get_ref(),
-        }
-    }
-
     pub(crate) fn tcp_mut(&mut self) -> &mut TcpStream {
         match self {
             Self::Plain(stream) => stream,
             #[cfg(feature = "tls")]
             Self::Tls(stream) => stream.get_mut(),
         }
-    }
-
-    pub(crate) fn is_tls(&self) -> bool {
-        #[cfg(feature = "tls")]
-        {
-            matches!(self, Self::Tls(_))
-        }
-        #[cfg(not(feature = "tls"))]
-        {
-            false
-        }
-    }
-
-    pub(crate) fn shutdown(&mut self) -> io::Result<()> {
-        #[cfg(feature = "tls")]
-        let tls_result = if let Self::Tls(stream) = self {
-            stream.shutdown()
-        } else {
-            Ok(())
-        };
-        #[cfg(not(feature = "tls"))]
-        let tls_result: io::Result<()> = Ok(());
-
-        let tcp_result = self.tcp().shutdown(Shutdown::Both);
-        tls_result.and(tcp_result)
     }
 }
 
@@ -230,23 +197,6 @@ impl Connection {
 
     pub(crate) fn set_max_packet_size(&mut self, max_packet_size: usize) {
         self.max_packet_size = max_packet_size;
-    }
-
-    pub(crate) fn stream(&self) -> &TcpStream {
-        self.stream.tcp()
-    }
-
-    pub(crate) fn stream_mut(&mut self) -> &mut TcpStream {
-        self.stream.tcp_mut()
-    }
-
-    pub(crate) fn is_tls(&self) -> bool {
-        self.stream.is_tls()
-    }
-
-    pub(crate) fn shutdown(&mut self) -> Result<()> {
-        self.stream.shutdown()?;
-        Ok(())
     }
 }
 

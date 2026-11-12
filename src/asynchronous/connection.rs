@@ -17,40 +17,6 @@ pub(crate) enum Stream {
     Tls(Box<tokio_native_tls::TlsStream<TcpStream>>),
 }
 
-impl Stream {
-    pub(crate) fn tcp(&self) -> &TcpStream {
-        match self {
-            Self::Plain(stream) => stream,
-            #[cfg(feature = "tokio-tls")]
-            Self::Tls(stream) => stream.get_ref().get_ref().get_ref(),
-        }
-    }
-
-    pub(crate) fn tcp_mut(&mut self) -> &mut TcpStream {
-        match self {
-            Self::Plain(stream) => stream,
-            #[cfg(feature = "tokio-tls")]
-            Self::Tls(stream) => stream.get_mut().get_mut().get_mut(),
-        }
-    }
-
-    pub(crate) fn is_tls(&self) -> bool {
-        #[cfg(feature = "tokio-tls")]
-        {
-            matches!(self, Self::Tls(_))
-        }
-        #[cfg(not(feature = "tokio-tls"))]
-        {
-            false
-        }
-    }
-
-    pub(crate) async fn shutdown(&mut self) -> Result<()> {
-        AsyncWriteExt::shutdown(self).await?;
-        Ok(())
-    }
-}
-
 impl AsyncRead for Stream {
     fn poll_read(
         self: Pin<&mut Self>,
@@ -153,22 +119,6 @@ impl Connection {
 
     pub(crate) fn set_max_packet_size(&mut self, max_packet_size: usize) {
         self.max_packet_size = max_packet_size;
-    }
-
-    pub(crate) fn stream(&self) -> &TcpStream {
-        self.stream.tcp()
-    }
-
-    pub(crate) fn stream_mut(&mut self) -> &mut TcpStream {
-        self.stream.tcp_mut()
-    }
-
-    pub(crate) fn is_tls(&self) -> bool {
-        self.stream.is_tls()
-    }
-
-    pub(crate) async fn shutdown(&mut self) -> Result<()> {
-        self.stream.shutdown().await
     }
 }
 

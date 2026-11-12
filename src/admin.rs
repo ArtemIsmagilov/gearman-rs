@@ -6,7 +6,7 @@
 //! `.` (list commands) or by an `OK`/`ERR` line (single-value commands).
 
 use std::io::{BufRead, BufReader, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::time::Duration;
 
 use crate::error::{Error, Result};
@@ -494,36 +494,6 @@ impl AdminClient {
     /// Changes the write timeout of the underlying socket.
     pub fn set_write_timeout(&mut self, timeout: Option<Duration>) -> Result<()> {
         self.reader.get_mut().tcp_mut().set_write_timeout(timeout)?;
-        Ok(())
-    }
-
-    /// Returns a reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS this is the raw encrypted transport.
-    /// Reading from or writing to it directly bypasses TLS and corrupts the
-    /// connection.
-    pub fn stream(&self) -> &TcpStream {
-        self.reader.get_ref().tcp()
-    }
-
-    /// Returns `true` when the connection is encrypted with TLS.
-    pub fn is_tls(&self) -> bool {
-        self.reader.get_ref().is_tls()
-    }
-
-    /// Shuts down the TCP connection.
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> gearman_rs::Result<()> {
-    /// use gearman_rs::AdminClient;
-    /// let mut admin = AdminClient::connect("127.0.0.1:4730")?;
-    /// admin.shutdown()?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn shutdown(&mut self) -> Result<()> {
-        self.reader.get_mut().shutdown()?;
         Ok(())
     }
 

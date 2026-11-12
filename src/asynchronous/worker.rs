@@ -835,27 +835,6 @@ impl Worker {
             .set_max_packet_size(max_packet_size);
     }
 
-    /// Returns `true` when the connection is encrypted with TLS.
-    pub async fn is_tls(&self) -> bool {
-        self.connection.lock().await.is_tls()
-    }
-
-    /// Shuts down the TCP connection.
-    /// # Examples
-    ///
-    /// ```
-    /// # #[tokio::main]
-    /// # async fn main() -> gearman_rs::Result<()> {
-    /// use gearman_rs::AsyncWorker;
-    /// let mut worker = AsyncWorker::connect("127.0.0.1:4730").await?;
-    /// worker.shutdown().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn shutdown(&mut self) -> Result<()> {
-        self.connection.lock().await.shutdown().await
-    }
-
     async fn send(&self, kind: PacketType, data: &[u8]) -> Result<()> {
         self.connection.lock().await.send(kind, data).await
     }

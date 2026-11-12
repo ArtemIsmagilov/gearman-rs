@@ -4,7 +4,6 @@ use std::time::Duration;
 use tokio::net::ToSocketAddrs;
 
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::TcpStream;
 
 use crate::admin::{FunctionStatus, JobInfo, PriorityStatus, WorkerInfo};
 use crate::error::{Error, Result};
@@ -459,36 +458,6 @@ impl AdminClient {
     /// Changes the write timeout used by subsequent operations.
     pub fn set_write_timeout(&mut self, timeout: Option<Duration>) {
         self.write_timeout = timeout;
-    }
-
-    /// Returns a reference to the underlying TCP stream.
-    ///
-    /// When the connection uses TLS this is the raw encrypted transport.
-    /// Reading from or writing to it directly bypasses TLS and corrupts the
-    /// connection.
-    pub fn stream(&self) -> &TcpStream {
-        self.reader.get_ref().tcp()
-    }
-
-    /// Returns `true` when the connection is encrypted with TLS.
-    pub fn is_tls(&self) -> bool {
-        self.reader.get_ref().is_tls()
-    }
-
-    /// Shuts down the TCP connection.
-    /// # Examples
-    ///
-    /// ```
-    /// # #[tokio::main]
-    /// # async fn main() -> gearman_rs::Result<()> {
-    /// use gearman_rs::AsyncAdminClient;
-    /// let mut admin = AsyncAdminClient::connect("127.0.0.1:4730").await?;
-    /// admin.shutdown().await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub async fn shutdown(&mut self) -> Result<()> {
-        self.reader.get_mut().shutdown().await
     }
 
     async fn single_line(&mut self, command: &str) -> Result<String> {
